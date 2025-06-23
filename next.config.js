@@ -1,7 +1,3 @@
-import type { NextConfig } from 'next';
-
-// 使用動態 require 避免 ESLint 錯誤
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const withPWA = require('next-pwa')({
   dest: 'public',
   register: true,
@@ -21,10 +17,9 @@ const withPWA = require('next-pwa')({
   ],
 });
 
-const nextConfig: NextConfig = {
+/** @type {import('next').NextConfig} */
+const nextConfig = {
   /* config options here */
 };
 
-// 使用類型斷言來解決 next-pwa 版本不兼容問題
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export default withPWA(nextConfig as any);
+module.exports = withPWA(nextConfig);
