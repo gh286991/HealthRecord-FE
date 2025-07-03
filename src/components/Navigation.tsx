@@ -33,6 +33,12 @@ export default function Navigation() {
             {isLoggedIn ? (
               <>
                 <Link
+                  href="/nutrition"
+                  className="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
+                >
+                  飲食紀錄
+                </Link>
+                <Link
                   href="/profile"
                   className="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
                 >
