@@ -23,6 +23,9 @@ const withPWA = require('next-pwa')({
 
 const nextConfig: NextConfig = {
   /* config options here */
+  images: {
+    domains: ['tomminio-api.zeabur.app'],
+  },
 };
 
 // 使用類型斷言來解決 next-pwa 版本不兼容問題
