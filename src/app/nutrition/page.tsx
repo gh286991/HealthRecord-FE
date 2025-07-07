@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { tokenUtils, NutritionRecord } from '@/lib/api';
+import { useIsAuthenticated } from '@/store/hooks';
+import type { NutritionRecord } from '@/types';
 import NutritionForm from '@/components/NutritionForm';
 import NutritionList from '@/components/NutritionList';
 import LocalModeNotice from '@/components/LocalModeNotice';
@@ -12,18 +13,15 @@ type ViewMode = 'list' | 'add' | 'edit';
 export default function NutritionPage() {
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [editingRecord, setEditingRecord] = useState<NutritionRecord | null>(null);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const router = useRouter();
+  const isLoggedIn = useIsAuthenticated();
 
   useEffect(() => {
-    const loggedIn = tokenUtils.isLoggedIn();
-    setIsLoggedIn(loggedIn);
-    
-    if (!loggedIn) {
+    if (!isLoggedIn) {
       router.push('/login');
       return;
     }
-  }, [router]);
+  }, [isLoggedIn, router]);
 
   const handleAddNew = () => {
     setEditingRecord(null);

@@ -3,7 +3,10 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { authApi, RegisterData } from '@/lib/api';
+import { useRegisterMutation } from '@/store/api/healthApi';
+import { useAppDispatch } from '@/store/hooks';
+import { addNotification } from '@/store/slices/uiSlice';
+import type { RegisterData } from '@/types';
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState<RegisterData>({
@@ -15,10 +18,13 @@ export default function RegisterPage() {
     gender: undefined,
     birthday: '',
   });
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const router = useRouter();
+  const dispatch = useAppDispatch();
+  
+  // RTK Query mutation hook
+  const [registerUser, { isLoading: loading }] = useRegisterMutation();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -30,7 +36,6 @@ export default function RegisterPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
     setError('');
     setSuccess('');
 
@@ -47,22 +52,27 @@ export default function RegisterPage() {
       if (formData.gender) submitData.gender = formData.gender;
       if (formData.birthday) submitData.birthday = formData.birthday;
 
-      await authApi.register(submitData);
+      await registerUser(submitData).unwrap();
+      
       setSuccess('註冊成功！請前往登入頁面');
+      dispatch(addNotification({
+        type: 'success',
+        message: '✅ 註冊成功！請登入您的帳戶',
+      }));
+      
       setTimeout(() => {
         router.push('/login');
       }, 2000);
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error && 'response' in err && 
-        typeof err.response === 'object' && err.response !== null &&
-        'data' in err.response && typeof err.response.data === 'object' &&
-        err.response.data !== null && 'message' in err.response.data &&
-        typeof err.response.data.message === 'string'
-        ? err.response.data.message
+      const errorMessage = err instanceof Error && 'message' in err && typeof err.message === 'string'
+        ? err.message
         : '註冊失敗，請稍後再試';
       setError(errorMessage);
-    } finally {
-      setLoading(false);
+      
+      dispatch(addNotification({
+        type: 'error',
+        message: `❌ ${errorMessage}`,
+      }));
     }
   };
 

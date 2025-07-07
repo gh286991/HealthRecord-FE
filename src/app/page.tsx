@@ -1,15 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { tokenUtils } from '@/lib/api';
+import { useIsAuthenticated } from '@/store/hooks';
 
 export default function Home() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-
-  useEffect(() => {
-    setIsLoggedIn(tokenUtils.isLoggedIn());
-  }, []);
+  const isLoggedIn = useIsAuthenticated();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-blue-50 to-purple-50">

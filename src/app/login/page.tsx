@@ -3,16 +3,22 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { authApi, tokenUtils, LoginData } from '@/lib/api';
+import { useLoginMutation } from '@/store/api/healthApi';
+import { useAppDispatch } from '@/store/hooks';
+import { login, addNotification } from '@/store/slices/uiSlice';
+import type { LoginData } from '@/types';
 
 export default function LoginPage() {
   const [formData, setFormData] = useState<LoginData>({
     username: '',
     password: '',
   });
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const router = useRouter();
+  const dispatch = useAppDispatch();
+  
+  // RTK Query mutation hook
+  const [loginUser, { isLoading: loading }] = useLoginMutation();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -27,24 +33,34 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
     setError('');
 
     try {
-      const response = await authApi.login(formData);
-      tokenUtils.setToken(response.accessToken);
+      const response = await loginUser(formData).unwrap();
+      
+      // 更新 Redux 狀態
+      dispatch(login({
+        token: response.accessToken,
+        user: response.user,
+      }));
+      
+      // 顯示成功通知
+      dispatch(addNotification({
+        type: 'success',
+        message: '✅ 登入成功！',
+      }));
+      
       router.push('/profile');
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error && 'response' in err && 
-        typeof err.response === 'object' && err.response !== null &&
-        'data' in err.response && typeof err.response.data === 'object' &&
-        err.response.data !== null && 'message' in err.response.data &&
-        typeof err.response.data.message === 'string'
-        ? err.response.data.message
+      const errorMessage = err instanceof Error && 'message' in err && typeof err.message === 'string'
+        ? err.message
         : '登入失敗，請檢查用戶名和密碼';
       setError(errorMessage);
-    } finally {
-      setLoading(false);
+      
+      dispatch(addNotification({
+        type: 'error',
+        message: `❌ ${errorMessage}`,
+      }));
     }
   };
 

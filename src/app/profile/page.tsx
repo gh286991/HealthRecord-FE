@@ -2,49 +2,49 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { authApi, tokenUtils, UserProfile, UpdateUserData } from '@/lib/api';
+import { useGetUserProfileQuery, useUpdateUserProfileMutation } from '@/store/api/healthApi';
+import { useAppDispatch, useIsAuthenticated } from '@/store/hooks';
+import { addNotification, setUser } from '@/store/slices/uiSlice';
+import type { UpdateUserData } from '@/types';
 
 export default function ProfilePage() {
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
-  const [updateLoading, setUpdateLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [formData, setFormData] = useState<UpdateUserData>({});
   const router = useRouter();
+  const dispatch = useAppDispatch();
+  const isAuthenticated = useIsAuthenticated();
+
+  // RTK Query hooks
+  const { 
+    data: profile, 
+    isLoading: loading, 
+    error: profileError, 
+    refetch 
+  } = useGetUserProfileQuery(undefined, {
+    skip: !isAuthenticated
+  });
+  
+  const [updateProfile, { isLoading: updateLoading }] = useUpdateUserProfileMutation();
 
   useEffect(() => {
-    if (!tokenUtils.isLoggedIn()) {
+    if (!isAuthenticated) {
       router.push('/login');
       return;
     }
+  }, [isAuthenticated, router]);
 
-    fetchProfile();
-  }, [router]); // fetchProfile is stable and doesn't need to be in deps
-
-  const fetchProfile = async () => {
-    try {
-      const data = await authApi.getProfile();
-      setProfile(data);
+  useEffect(() => {
+    if (profile) {
       setFormData({
-        name: data.name || '',
-        bio: data.bio || '',
-        gender: data.gender,
-        birthday: data.birthday || '',
+        name: profile.name || '',
+        bio: profile.bio || '',
+        gender: profile.gender,
+        birthday: profile.birthday || '',
       });
-    } catch (err: unknown) {
-      setError('獲取用戶資料失敗');
-      if (err instanceof Error && 'response' in err && 
-          typeof err.response === 'object' && err.response !== null &&
-          'status' in err.response && err.response.status === 401) {
-        tokenUtils.removeToken();
-        router.push('/login');
-      }
-    } finally {
-      setLoading(false);
     }
-  };
+  }, [profile]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -56,7 +56,6 @@ export default function ProfilePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setUpdateLoading(true);
     setError('');
     setSuccess('');
 
@@ -68,21 +67,29 @@ export default function ProfilePage() {
       if (formData.gender) submitData.gender = formData.gender;
       if (formData.birthday) submitData.birthday = formData.birthday;
 
-      const updatedProfile = await authApi.updateProfile(submitData);
-      setProfile(updatedProfile);
+      const updatedProfile = await updateProfile(submitData).unwrap();
+      
+      // 更新 Redux 中的用戶資料
+      dispatch(setUser(updatedProfile));
+      
       setEditing(false);
       setSuccess('個人資料更新成功！');
+      
+      dispatch(addNotification({
+        type: 'success',
+        message: '✅ 個人資料更新成功！',
+      }));
+      
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error && 'response' in err && 
-        typeof err.response === 'object' && err.response !== null &&
-        'data' in err.response && typeof err.response.data === 'object' &&
-        err.response.data !== null && 'message' in err.response.data &&
-        typeof err.response.data.message === 'string'
-        ? err.response.data.message
+      const errorMessage = err instanceof Error && 'message' in err && typeof err.message === 'string'
+        ? err.message
         : '更新失敗，請稍後再試';
       setError(errorMessage);
-    } finally {
-      setUpdateLoading(false);
+      
+      dispatch(addNotification({
+        type: 'error',
+        message: `❌ ${errorMessage}`,
+      }));
     }
   };
 
@@ -111,13 +118,13 @@ export default function ProfilePage() {
     );
   }
 
-  if (!profile) {
+  if (profileError || !profile) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <p className="text-red-600">無法載入用戶資料</p>
           <button
-            onClick={fetchProfile}
+            onClick={() => refetch()}
             className="mt-4 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
           >
             重試
@@ -233,7 +240,7 @@ export default function ProfilePage() {
 
                   <div className="md:col-span-2">
                     <label htmlFor="bio" className="block text-sm font-medium text-gray-700 mb-2">
-                      個人簡介
+                      自我介紹
                     </label>
                     <textarea
                       id="bio"
@@ -242,26 +249,23 @@ export default function ProfilePage() {
                       value={formData.bio || ''}
                       onChange={handleChange}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="介紹一下自己..."
                     />
                   </div>
                 </div>
 
-                <div className="flex justify-end space-x-4">
+                <div className="flex justify-end space-x-3">
                   <button
                     type="button"
-                    onClick={() => {
-                      setEditing(false);
-                      setError('');
-                      setSuccess('');
-                    }}
-                    className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+                    onClick={() => setEditing(false)}
+                    className="bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400"
                   >
                     取消
                   </button>
                   <button
                     type="submit"
                     disabled={updateLoading}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
+                    className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50"
                   >
                     {updateLoading ? '更新中...' : '儲存'}
                   </button>
@@ -271,53 +275,39 @@ export default function ProfilePage() {
               <div className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      用戶名
-                    </label>
-                    <p className="text-gray-900">{profile.username}</p>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">用戶名</label>
+                    <p className="text-lg">{profile.username}</p>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      信箱
-                    </label>
-                    <p className="text-gray-900">{profile.email}</p>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">信箱</label>
+                    <p className="text-lg">{profile.email}</p>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      姓名
-                    </label>
-                    <p className="text-gray-900">{profile.name || '未設定'}</p>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">姓名</label>
+                    <p className="text-lg">{profile.name || '未設定'}</p>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      性別
-                    </label>
-                    <p className="text-gray-900">{getGenderText(profile.gender)}</p>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">性別</label>
+                    <p className="text-lg">{getGenderText(profile.gender)}</p>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      生日
-                    </label>
-                    <p className="text-gray-900">{formatDate(profile.birthday)}</p>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">生日</label>
+                    <p className="text-lg">{formatDate(profile.birthday)}</p>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      註冊時間
-                    </label>
-                    <p className="text-gray-900">{formatDate(profile.createdAt)}</p>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">註冊時間</label>
+                    <p className="text-lg">{formatDate(profile.createdAt)}</p>
                   </div>
 
                   <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      個人簡介
-                    </label>
-                    <p className="text-gray-900 whitespace-pre-wrap">
-                      {profile.bio || '未設定'}
+                    <label className="block text-sm font-medium text-gray-700 mb-2">自我介紹</label>
+                    <p className="text-lg whitespace-pre-wrap bg-gray-50 p-4 rounded-md">
+                      {profile.bio || '尚未填寫自我介紹'}
                     </p>
                   </div>
                 </div>

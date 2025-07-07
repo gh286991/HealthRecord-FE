@@ -2,20 +2,21 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
-import { tokenUtils } from '@/lib/api';
+import { useIsAuthenticated, useAppDispatch } from '@/store/hooks';
+import { logout } from '@/store/slices/uiSlice';
+import { addNotification } from '@/store/slices/uiSlice';
 
 export default function Navigation() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const isLoggedIn = useIsAuthenticated();
+  const dispatch = useAppDispatch();
   const router = useRouter();
 
-  useEffect(() => {
-    setIsLoggedIn(tokenUtils.isLoggedIn());
-  }, []);
-
   const handleLogout = () => {
-    tokenUtils.removeToken();
-    setIsLoggedIn(false);
+    dispatch(logout());
+    dispatch(addNotification({
+      type: 'success',
+      message: '✅ 已成功登出！',
+    }));
     router.push('/');
   };
 
