@@ -4,8 +4,6 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { tokenUtils, UserProfile, UpdateUserData } from '@/lib/api';
 import { useGetProfileQuery, useUpdateProfileMutation } from '@/lib/authApi';
-import { useDispatch } from 'react-redux';
-import { logout } from '@/lib/authSlice';
 
 export default function ProfilePage() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -18,7 +16,6 @@ export default function ProfilePage() {
   const router = useRouter();
   const { data, isFetching, refetch } = useGetProfileQuery();
   const [updateProfile] = useUpdateProfileMutation();
-  const dispatch = useDispatch();
 
   useEffect(() => {
     if (!tokenUtils.isLoggedIn()) {

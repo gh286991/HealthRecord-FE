@@ -58,8 +58,8 @@ export const workoutApi = createApi({
   tagTypes: ['WorkoutRecord', 'WorkoutSummary'],
   endpoints: (builder) => ({
     getWorkoutList: builder.query<DailyWorkoutResponse, { date?: string } | void>({
-      query: (params) => ({ url: '/workout-records', params }),
-      transformResponse: (response: any, _meta, arg) => {
+      query: (params) => ({ url: '/workout-records', params: params as Record<string, unknown> | undefined }),
+      transformResponse: (response: unknown, _meta, arg) => {
         if (Array.isArray(response)) {
           const records: WorkoutRecord[] = response;
           const dailyTotals = records.reduce(
