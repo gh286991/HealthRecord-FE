@@ -13,6 +13,8 @@ export interface WorkoutSet {
 
 export interface WorkoutExercise {
   exerciseName: string;
+  bodyPart?: string;
+  exerciseId: string;
   sets: WorkoutSet[];
 }
 
@@ -102,6 +104,12 @@ export const workoutApi = createApi({
       query: (id) => ({ url: `/workout-records/${id}`, method: 'DELETE' }),
       invalidatesTags: [{ type: 'WorkoutSummary', id: 'LIST' }],
     }),
+    getBodyParts: builder.query<string[], void>({
+      query: () => '/workout-records/common/body-parts',
+    }),
+    getCommonExercises: builder.query<Array<{ _id: string; name: string; bodyPart: string }>, string | void>({
+      query: (bodyPart) => ({ url: '/workout-records/common/exercises', params: bodyPart ? { bodyPart } : undefined }),
+    }),
   }),
 });
 
@@ -112,6 +120,8 @@ export const {
   useCreateWorkoutMutation,
   useUpdateWorkoutMutation,
   useDeleteWorkoutMutation,
+  useGetBodyPartsQuery,
+  useGetCommonExercisesQuery,
 } = workoutApi;
 
 

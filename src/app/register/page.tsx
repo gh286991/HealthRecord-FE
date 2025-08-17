@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { authApi, RegisterData } from '@/lib/api';
+import { RegisterData } from '@/lib/api';
+import { useRegisterMutation } from '@/lib/authApi';
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState<RegisterData>({
@@ -19,6 +20,7 @@ export default function RegisterPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const router = useRouter();
+  const [registerUser] = useRegisterMutation();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -47,7 +49,7 @@ export default function RegisterPage() {
       if (formData.gender) submitData.gender = formData.gender;
       if (formData.birthday) submitData.birthday = formData.birthday;
 
-      await authApi.register(submitData);
+      await registerUser(submitData).unwrap();
       setSuccess('註冊成功！請前往登入頁面');
       setTimeout(() => {
         router.push('/login');

@@ -3,7 +3,10 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { authApi, tokenUtils, LoginData } from '@/lib/api';
+import { LoginData } from '@/lib/api';
+import { useLoginMutation } from '@/lib/authApi';
+import { useDispatch } from 'react-redux';
+import { setToken, setUser } from '@/lib/authSlice';
 
 export default function LoginPage() {
   const [formData, setFormData] = useState<LoginData>({
@@ -13,6 +16,8 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const router = useRouter();
+  const [login] = useLoginMutation();
+  const dispatch = useDispatch();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -31,8 +36,9 @@ export default function LoginPage() {
     setError('');
 
     try {
-      const response = await authApi.login(formData);
-      tokenUtils.setToken(response.accessToken);
+      const response = await login(formData).unwrap();
+      dispatch(setToken(response.accessToken));
+      if (response.user) dispatch(setUser(response.user));
       router.push('/profile');
     } catch (err: unknown) {
       const errorMessage = err instanceof Error && 'response' in err && 

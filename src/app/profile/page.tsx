@@ -2,7 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { authApi, tokenUtils, UserProfile, UpdateUserData } from '@/lib/api';
+import { tokenUtils, UserProfile, UpdateUserData } from '@/lib/api';
+import { useGetProfileQuery, useUpdateProfileMutation } from '@/lib/authApi';
+import { useDispatch } from 'react-redux';
+import { logout } from '@/lib/authSlice';
 
 export default function ProfilePage() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -13,6 +16,9 @@ export default function ProfilePage() {
   const [success, setSuccess] = useState('');
   const [formData, setFormData] = useState<UpdateUserData>({});
   const router = useRouter();
+  const { data, isFetching, refetch } = useGetProfileQuery();
+  const [updateProfile] = useUpdateProfileMutation();
+  const dispatch = useDispatch();
 
   useEffect(() => {
     if (!tokenUtils.isLoggedIn()) {
@@ -20,12 +26,11 @@ export default function ProfilePage() {
       return;
     }
 
-    fetchProfile();
-  }, [router]); // fetchProfile is stable and doesn't need to be in deps
+    setLoading(false);
+  }, [router]);
 
-  const fetchProfile = async () => {
-    try {
-      const data = await authApi.getProfile();
+  useEffect(() => {
+    if (data) {
       setProfile(data);
       setFormData({
         name: data.name || '',
@@ -33,18 +38,8 @@ export default function ProfilePage() {
         gender: data.gender,
         birthday: data.birthday || '',
       });
-    } catch (err: unknown) {
-      setError('獲取用戶資料失敗');
-      if (err instanceof Error && 'response' in err && 
-          typeof err.response === 'object' && err.response !== null &&
-          'status' in err.response && err.response.status === 401) {
-        tokenUtils.removeToken();
-        router.push('/login');
-      }
-    } finally {
-      setLoading(false);
     }
-  };
+  }, [data]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -68,7 +63,7 @@ export default function ProfilePage() {
       if (formData.gender) submitData.gender = formData.gender;
       if (formData.birthday) submitData.birthday = formData.birthday;
 
-      const updatedProfile = await authApi.updateProfile(submitData);
+      const updatedProfile = await updateProfile(submitData).unwrap();
       setProfile(updatedProfile);
       setEditing(false);
       setSuccess('個人資料更新成功！');
@@ -100,7 +95,7 @@ export default function ProfilePage() {
     }
   };
 
-  if (loading) {
+  if (loading || isFetching) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -117,7 +112,7 @@ export default function ProfilePage() {
         <div className="text-center">
           <p className="text-red-600">無法載入用戶資料</p>
           <button
-            onClick={fetchProfile}
+            onClick={() => refetch()}
             className="mt-4 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
           >
             重試

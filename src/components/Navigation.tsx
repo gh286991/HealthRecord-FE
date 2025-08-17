@@ -3,18 +3,22 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { tokenUtils } from '@/lib/api';
+import { useSelector, useDispatch } from 'react-redux';
+import { RootState } from '@/lib/store';
+import { logout as logoutAction } from '@/lib/authSlice';
 
 export default function Navigation() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const token = useSelector((s: RootState) => s.auth.token);
+  const dispatch = useDispatch();
   const router = useRouter();
 
   useEffect(() => {
-    setIsLoggedIn(tokenUtils.isLoggedIn());
-  }, []);
+    setIsLoggedIn(!!token);
+  }, [token]);
 
   const handleLogout = () => {
-    tokenUtils.removeToken();
+    dispatch(logoutAction());
     setIsLoggedIn(false);
     router.push('/');
   };
