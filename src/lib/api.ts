@@ -207,6 +207,93 @@ export const authApi = {
   },
 };
 
+// 健身紀錄相關類型
+export interface WorkoutSet {
+  weight: number;
+  reps: number;
+  restSeconds?: number;
+  rpe?: number;
+}
+
+export interface WorkoutExercise {
+  exerciseName: string;
+  sets: WorkoutSet[];
+}
+
+export interface WorkoutRecord {
+  _id: string;
+  userId: string;
+  date: string;
+  exercises: WorkoutExercise[];
+  notes?: string;
+  totalVolume: number;
+  totalSets: number;
+  totalReps: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateWorkoutRecord {
+  date: string;
+  exercises: WorkoutExercise[];
+  notes?: string;
+}
+
+export interface UpdateWorkoutRecord {
+  date?: string;
+  exercises?: WorkoutExercise[];
+  notes?: string;
+}
+
+export interface DailyWorkoutResponse {
+  date: string;
+  records: WorkoutRecord[];
+  dailyTotals: {
+    totalVolume: number;
+    totalSets: number;
+    totalReps: number;
+    recordCount: number;
+  };
+}
+
+// 健身紀錄 API
+export const workoutApi = {
+  create: async (data: CreateWorkoutRecord): Promise<WorkoutRecord> => {
+    const response = await api.post('/workout-records', data);
+    return response.data;
+  },
+  getList: async (params?: { date?: string }): Promise<DailyWorkoutResponse> => {
+    const response = await api.get('/workout-records', { params });
+    const records: WorkoutRecord[] = response.data;
+    if (Array.isArray(records)) {
+      const dailyTotals = records.reduce((t, r) => ({
+        totalVolume: t.totalVolume + r.totalVolume,
+        totalSets: t.totalSets + r.totalSets,
+        totalReps: t.totalReps + r.totalReps,
+        recordCount: t.recordCount + 1,
+      }), { totalVolume: 0, totalSets: 0, totalReps: 0, recordCount: 0 });
+      return { date: params?.date || new Date().toISOString().split('T')[0], records, dailyTotals };
+    }
+    return response.data;
+  },
+  getDailySummary: async (date: string): Promise<DailyWorkoutResponse> => {
+    const response = await api.get('/workout-records/daily-summary', { params: { date } });
+    return response.data;
+  },
+  getById: async (id: string): Promise<WorkoutRecord> => {
+    const response = await api.get(`/workout-records/${id}`);
+    return response.data;
+  },
+  update: async (id: string, data: UpdateWorkoutRecord): Promise<WorkoutRecord> => {
+    const response = await api.patch(`/workout-records/${id}`, data);
+    return response.data;
+  },
+  delete: async (id: string): Promise<{ message: string }> => {
+    const response = await api.delete(`/workout-records/${id}`);
+    return response.data;
+  },
+};
+
 // 飲食紀錄 API
 export const nutritionApi = {
   // 創建飲食紀錄
