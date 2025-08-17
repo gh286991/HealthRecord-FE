@@ -27,6 +27,8 @@ export interface WorkoutRecord {
   totalVolume: number;
   totalSets: number;
   totalReps: number;
+  workoutDurationSeconds?: number;
+  totalRestSeconds?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -89,11 +91,11 @@ export const workoutApi = createApi({
       query: (id) => `/workout-records/${id}`,
       providesTags: (result, _e, id) => [{ type: 'WorkoutRecord', id }],
     }),
-    createWorkout: builder.mutation<WorkoutRecord, { date: string; exercises: WorkoutExercise[]; notes?: string }>({
+    createWorkout: builder.mutation<WorkoutRecord, { date: string; exercises: WorkoutExercise[]; notes?: string; workoutDurationSeconds?: number; totalRestSeconds?: number }>({
       query: (body) => ({ url: '/workout-records', method: 'POST', body }),
       invalidatesTags: [{ type: 'WorkoutSummary', id: 'LIST' }],
     }),
-    updateWorkout: builder.mutation<WorkoutRecord, { id: string; body: Partial<{ date: string; exercises: WorkoutExercise[]; notes?: string }> }>({
+    updateWorkout: builder.mutation<WorkoutRecord, { id: string; body: Partial<{ date: string; exercises: WorkoutExercise[]; notes?: string; workoutDurationSeconds?: number; totalRestSeconds?: number }> }>({
       query: ({ id, body }) => ({ url: `/workout-records/${id}`, method: 'PATCH', body }),
       invalidatesTags: (result, _e, arg) => [
         { type: 'WorkoutRecord', id: arg.id },
