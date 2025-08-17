@@ -4,18 +4,21 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { tokenUtils, UserProfile, UpdateUserData } from '@/lib/api';
 import { useGetProfileQuery, useUpdateProfileMutation } from '@/lib/authApi';
+import Button from '@/components/Button';
+import Toast from '@/components/Toast';
 
 export default function ProfilePage() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [updateLoading, setUpdateLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
   const [formData, setFormData] = useState<UpdateUserData>({});
   const router = useRouter();
   const { data, isFetching, refetch } = useGetProfileQuery();
   const [updateProfile] = useUpdateProfileMutation();
+  const [toastOpen, setToastOpen] = useState(false);
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const [toastVariant, setToastVariant] = useState<'default'|'success'|'error'>('default');
 
   useEffect(() => {
     if (!tokenUtils.isLoggedIn()) {
@@ -49,8 +52,6 @@ export default function ProfilePage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setUpdateLoading(true);
-    setError('');
-    setSuccess('');
 
     try {
       // 過濾掉空字串的欄位
@@ -63,7 +64,10 @@ export default function ProfilePage() {
       const updatedProfile = await updateProfile(submitData).unwrap();
       setProfile(updatedProfile);
       setEditing(false);
-      setSuccess('個人資料更新成功！');
+
+      setToastVariant('success');
+      setToastMsg('個人資料已更新');
+      setToastOpen(true);
     } catch (err: unknown) {
       const errorMessage = err instanceof Error && 'response' in err && 
         typeof err.response === 'object' && err.response !== null &&
@@ -72,7 +76,9 @@ export default function ProfilePage() {
         typeof err.response.data.message === 'string'
         ? err.response.data.message
         : '更新失敗，請稍後再試';
-      setError(errorMessage);
+      setToastVariant('error');
+      setToastMsg(errorMessage);
+      setToastOpen(true);
     } finally {
       setUpdateLoading(false);
     }
@@ -127,26 +133,11 @@ export default function ProfilePage() {
             <div className="flex justify-between items-center mb-6">
               <h1 className="text-2xl font-bold text-gray-900">個人資料</h1>
               {!editing && (
-                <button
-                  onClick={() => setEditing(true)}
-                  className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-                >
-                  編輯資料
-                </button>
+                <Button onClick={() => setEditing(true)}>編輯資料</Button>
               )}
             </div>
 
-            {error && (
-              <div className="mb-4 bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded">
-                {error}
-              </div>
-            )}
-
-            {success && (
-              <div className="mb-4 bg-green-50 border border-green-200 text-green-600 px-4 py-3 rounded">
-                {success}
-              </div>
-            )}
+            {/* 提示改為 Toast */}
 
             {editing ? (
               <form onSubmit={handleSubmit} className="space-y-6">
@@ -239,24 +230,18 @@ export default function ProfilePage() {
                 </div>
 
                 <div className="flex justify-end space-x-4">
-                  <button
+                  <Button
                     type="button"
+                    variant="secondary"
                     onClick={() => {
                       setEditing(false);
-                      setError('');
-                      setSuccess('');
                     }}
-                    className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
                   >
                     取消
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={updateLoading}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
-                  >
+                  </Button>
+                  <Button type="submit" disabled={updateLoading}>
                     {updateLoading ? '更新中...' : '儲存'}
-                  </button>
+                  </Button>
                 </div>
               </form>
             ) : (
@@ -318,6 +303,7 @@ export default function ProfilePage() {
           </div>
         </div>
       </div>
+      <Toast open={toastOpen} message={toastMsg} variant={toastVariant} onClose={() => setToastOpen(false)} />
     </div>
   );
 } 

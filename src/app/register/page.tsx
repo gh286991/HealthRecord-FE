@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { RegisterData } from '@/lib/api';
 import { useRegisterMutation } from '@/lib/authApi';
+import Button from '@/components/Button';
+import Toast from '@/components/Toast';
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState<RegisterData>({
@@ -17,10 +19,11 @@ export default function RegisterPage() {
     birthday: '',
   });
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
   const router = useRouter();
   const [registerUser] = useRegisterMutation();
+  const [toastOpen, setToastOpen] = useState(false);
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const [toastVariant, setToastVariant] = useState<'default'|'success'|'error'>('default');
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -33,8 +36,6 @@ export default function RegisterPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setError('');
-    setSuccess('');
 
     try {
       // 過濾掉空字串的可選欄位
@@ -50,10 +51,10 @@ export default function RegisterPage() {
       if (formData.birthday) submitData.birthday = formData.birthday;
 
       await registerUser(submitData).unwrap();
-      setSuccess('註冊成功！請前往登入頁面');
-      setTimeout(() => {
-        router.push('/login');
-      }, 2000);
+      setToastVariant('success');
+      setToastMsg('註冊成功！請前往登入');
+      setToastOpen(true);
+      setTimeout(() => router.push('/login'), 600);
     } catch (err: unknown) {
       const errorMessage = err instanceof Error && 'response' in err && 
         typeof err.response === 'object' && err.response !== null &&
@@ -62,7 +63,9 @@ export default function RegisterPage() {
         typeof err.response.data.message === 'string'
         ? err.response.data.message
         : '註冊失敗，請稍後再試';
-      setError(errorMessage);
+      setToastVariant('error');
+      setToastMsg(errorMessage);
+      setToastOpen(true);
     } finally {
       setLoading(false);
     }
@@ -85,17 +88,6 @@ export default function RegisterPage() {
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
           <form className="space-y-6" onSubmit={handleSubmit}>
-            {error && (
-              <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded">
-                {error}
-              </div>
-            )}
-            
-            {success && (
-              <div className="bg-green-50 border border-green-200 text-green-600 px-4 py-3 rounded">
-                {success}
-              </div>
-            )}
 
             <div>
               <label htmlFor="username" className="block text-sm font-medium text-gray-700">
@@ -219,17 +211,14 @@ export default function RegisterPage() {
             </div>
 
             <div>
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
-              >
+              <Button type="submit" disabled={loading} className="w-full">
                 {loading ? '註冊中...' : '註冊'}
-              </button>
+              </Button>
             </div>
           </form>
         </div>
       </div>
+      <Toast open={toastOpen} message={toastMsg} variant={toastVariant} onClose={() => setToastOpen(false)} />
     </div>
   );
 } 

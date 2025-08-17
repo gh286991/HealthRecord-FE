@@ -3,7 +3,12 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { tokenUtils } from '@/lib/api';
-import { WorkoutRecord, WorkoutExercise, useCreateWorkoutMutation, useGetWorkoutListQuery, useUpdateWorkoutMutation, useGetBodyPartsQuery, useGetCommonExercisesQuery } from '@/lib/workoutApi';
+import { WorkoutRecord, WorkoutExercise, useCreateWorkoutMutation, useGetWorkoutListQuery, useUpdateWorkoutMutation, useGetBodyPartsQuery, useGetCommonExercisesQuery, useDeleteWorkoutMutation } from '@/lib/workoutApi';
+import Button from '@/components/Button';
+import Card from '@/components/Card';
+import BottomSheet from '@/components/BottomSheet';
+import Toast from '@/components/Toast';
+import ConfirmDialog from '@/components/ConfirmDialog';
 
 type ViewMode = 'list' | 'add' | 'edit';
 
@@ -15,7 +20,13 @@ export default function WorkoutPage() {
   const { data: listData, refetch } = useGetWorkoutListQuery({ date: selectedDate });
   const [createWorkout] = useCreateWorkoutMutation();
   const [updateWorkout] = useUpdateWorkoutMutation();
+  const [deleteWorkout] = useDeleteWorkoutMutation();
   const router = useRouter();
+  const [toastOpen, setToastOpen] = useState(false);
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const [toastVariant, setToastVariant] = useState<'default'|'success'|'error'>('default');
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmId, setConfirmId] = useState<string | null>(null);
 
   useEffect(() => {
     const loggedIn = tokenUtils.isLoggedIn();
@@ -49,6 +60,30 @@ export default function WorkoutPage() {
     setViewMode('edit');
   };
 
+  const requestDelete = (id: string) => {
+    setConfirmId(id);
+    setConfirmOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!confirmId) return;
+    try {
+      await deleteWorkout(confirmId).unwrap();
+      await fetchData();
+      setToastVariant('success');
+      setToastMsg('紀錄已刪除');
+      setToastOpen(true);
+    } catch (e) {
+      console.error('刪除紀錄失敗', e);
+      setToastVariant('error');
+      setToastMsg('刪除失敗，請稍後再試');
+      setToastOpen(true);
+    } finally {
+      setConfirmOpen(false);
+      setConfirmId(null);
+    }
+  };
+
   const handleCancel = () => {
     setViewMode('list');
     setEditingRecord(null);
@@ -61,9 +96,14 @@ export default function WorkoutPage() {
       await fetchData();
       setViewMode('list');
       setEditingRecord(null);
+      setToastVariant('success');
+      setToastMsg('已儲存健身紀錄');
+      setToastOpen(true);
     } catch (e) {
       console.error('儲存健身紀錄失敗', e);
-      alert('儲存失敗，請稍後再試');
+      setToastVariant('error');
+      setToastMsg('儲存失敗，請稍後再試');
+      setToastOpen(true);
     }
   };
 
@@ -85,65 +125,70 @@ export default function WorkoutPage() {
           <div className="max-w-5xl mx-auto">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
               <h1 className="text-3xl font-bold text-gray-900 mb-4 sm:mb-0">健身紀錄</h1>
-              <button onClick={handleAdd} className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-green-500 to-blue-600 text-white font-medium rounded-xl hover:from-green-600 hover:to-blue-700 transition-all duration-200 shadow-lg">
+              <Button onClick={handleAdd} className="px-6 py-3 shadow-lg">
                 <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                 </svg>
                 新增紀錄
-              </button>
+              </Button>
             </div>
 
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
+            <Card className="p-6 mb-6">
               <div className="flex flex-col sm:flex-row gap-6 items-start sm:items-center">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">選擇日期</label>
-                  <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-gray-900" />
+                  <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className="px-4 py-2 border border-[#E1E6EC] rounded-lg focus:ring-2 focus:ring-[#0A84FF] focus:border-transparent text-gray-900" />
                 </div>
                 {listData?.dailyTotals && (
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                    <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
-                      <div className="text-2xl font-bold text-green-600">{listData.dailyTotals.totalVolume}</div>
-                      <div className="text-sm text-gray-600 mt-1">總訓練量</div>
-                    </div>
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">
-                      <div className="text-2xl font-bold text-blue-600">{listData.dailyTotals.totalSets}</div>
-                      <div className="text-sm text-gray-600 mt-1">總組數</div>
-                    </div>
-                    <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 text-center">
-                      <div className="text-2xl font-bold text-orange-600">{listData.dailyTotals.totalReps}</div>
-                      <div className="text-sm text-gray-600 mt-1">總次數</div>
-                    </div>
-                    <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 text-center">
-                      <div className="text-2xl font-bold text-purple-600">{listData.dailyTotals.recordCount}</div>
-                      <div className="text-sm text-gray-600 mt-1">筆數</div>
-                    </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 w-full">
+                    <Card className="p-4 text-center">
+                      <div className="text-2xl font-semibold text-gray-900">{listData.dailyTotals.totalVolume}</div>
+                      <div className="text-xs text-gray-500 mt-1">總訓練量</div>
+                    </Card>
+                    <Card className="p-4 text-center">
+                      <div className="text-2xl font-semibold text-gray-900">{listData.dailyTotals.totalSets}</div>
+                      <div className="text-xs text-gray-500 mt-1">總組數</div>
+                    </Card>
+                    <Card className="p-4 text-center">
+                      <div className="text-2xl font-semibold text-gray-900">{listData.dailyTotals.totalReps}</div>
+                      <div className="text-xs text-gray-500 mt-1">次數</div>
+                    </Card>
+                    <Card className="p-4 text-center">
+                      <div className="text-2xl font-semibold text-gray-900">{listData.dailyTotals.recordCount}</div>
+                      <div className="text-xs text-gray-500 mt-1">筆數</div>
+                    </Card>
                   </div>
                 )}
               </div>
-            </div>
+            </Card>
 
             <div className="space-y-4">
               {(((listData?.records?.length ?? 0) === 0)) ? (
-                <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-12 text-center">
+                <Card className="p-12 text-center">
                   <div className="text-gray-300 text-8xl mb-6">🏋️</div>
                   <h3 className="text-xl font-medium text-gray-900 mb-3">今天還沒有健身紀錄</h3>
                   <p className="text-gray-600 mb-6">開始記錄你的訓練！</p>
-                  <button onClick={handleAdd} className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-green-500 to-blue-600 text-white font-medium rounded-xl hover:from-green-600 hover:to-blue-700 transition-all duration-200 shadow-lg">
+                  <Button onClick={handleAdd} className="px-6 py-3 shadow-lg">
                     <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                     </svg>
                     新增第一筆紀錄
-                  </button>
-                </div>
+                  </Button>
+                </Card>
               ) : (
                 (listData?.records ?? []).map((r: WorkoutRecord) => (
-                  <div key={r._id} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow duration-200">
+                  <Card key={r._id} className="overflow-hidden hover:shadow-[0_12px_28px_rgba(0,0,0,.06)] transition-shadow duration-200">
                     <div className="bg-gray-50 px-6 py-4 border-b border-gray-100 flex justify-between items-center">
                       <div className="text-sm text-gray-600">{new Date(r.createdAt).toLocaleString('zh-TW')}</div>
                       <div className="space-x-2">
                         <button onClick={() => handleEdit(r)} className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
+                        </button>
+                        <button onClick={() => requestDelete(r._id)} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                           </svg>
                         </button>
                       </div>
@@ -177,7 +222,7 @@ export default function WorkoutPage() {
                         </div>
                       </div>
                     </div>
-                  </div>
+                  </Card>
                 ))
               )}
             </div>
@@ -202,6 +247,16 @@ export default function WorkoutPage() {
           </div>
         )}
       </div>
+      <Toast open={toastOpen} message={toastMsg} variant={toastVariant} onClose={() => setToastOpen(false)} />
+      <ConfirmDialog
+        open={confirmOpen}
+        title="刪除確認"
+        message="確定要刪除這筆健身紀錄嗎？此動作無法復原。"
+        confirmText="刪除"
+        cancelText="取消"
+        onConfirm={confirmDelete}
+        onCancel={() => setConfirmOpen(false)}
+      />
     </div>
   );
 }
@@ -212,9 +267,7 @@ function WorkoutForm({ initialData, onCancel, onSubmit }: {
   onSubmit: (payload: { date: string; exercises: WorkoutExercise[]; notes?: string }) => void;
 }) {
   const [date, setDate] = useState(initialData?.date || new Date().toISOString().split('T')[0]);
-  const [exercises, setExercises] = useState<WorkoutExercise[]>(initialData?.exercises || [
-    { exerciseName: 'Bench Press', exerciseId: '', sets: [{ weight: 40, reps: 10 }] },
-  ]);
+  const [exercises, setExercises] = useState<WorkoutExercise[]>(initialData?.exercises || []);
   const [notes, setNotes] = useState(initialData?.notes || '');
   const { data: bodyParts } = useGetBodyPartsQuery();
   const [pickerBodyPart, setPickerBodyPart] = useState<string>('');
@@ -234,16 +287,14 @@ function WorkoutForm({ initialData, onCancel, onSubmit }: {
     showToast('已移除動作');
   };
 
-  const updateExerciseName = (idx: number, name: string) => {
-    setExercises((prev) => prev.map((ex, i) => i === idx ? { ...ex, exerciseName: name } : ex));
-  };
+  // 動作名稱由常用清單帶入，前端不允許編輯
 
   const updateExerciseBodyPart = (idx: number, bp: string) => {
     setExercises((prev) => prev.map((ex, i) => i === idx ? { ...ex, bodyPart: bp } : ex));
   };
 
   const addSet = (exIdx: number) => {
-    setExercises((prev) => prev.map((ex, i) => i === exIdx ? { ...ex, sets: [...ex.sets, { weight: 0, reps: 0 }] } : ex));
+    setExercises((prev) => prev.map((ex, i) => i === exIdx ? { ...ex, sets: [...ex.sets, { weight: 0, reps: 8 }] } : ex));
     showToast('已新增一組');
   };
 
@@ -284,7 +335,7 @@ function WorkoutForm({ initialData, onCancel, onSubmit }: {
               <div className="flex items-end gap-3 mb-3">
                 <div className="flex-1">
                   <label className="block text-sm font-medium text-gray-700 mb-2">動作名稱</label>
-                  <input value={ex.exerciseName} onChange={(e) => updateExerciseName(idx, e.target.value)} placeholder="Bench Press / Squat / Deadlift..." className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-gray-900" />
+                  <input value={ex.exerciseName} readOnly placeholder="請由下方『新增動作』選擇常用項目" className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-900" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">部位</label>
@@ -313,7 +364,7 @@ function WorkoutForm({ initialData, onCancel, onSubmit }: {
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">次數</label>
-                      <input type="number" value={s.reps} onChange={(e) => updateSet(idx, sIdx, 'reps', Number(e.target.value))} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-gray-900" />
+                      <input type="number" min={1} value={s.reps} onChange={(e) => updateSet(idx, sIdx, 'reps', Math.max(1, Number(e.target.value)))} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-gray-900" />
                     </div>
                     <div className="flex items-end gap-2">
                       <button type="button" onClick={() => removeSet(idx, sIdx)} className="text-red-600 hover:text-red-800 transition active:scale-95">
@@ -338,44 +389,39 @@ function WorkoutForm({ initialData, onCancel, onSubmit }: {
           <div className="mt-2">
             <button type="button" onClick={() => setIsPickerOpen((v) => !v)} className="w-full py-3 rounded-xl bg-gradient-to-r from-green-500 to-blue-600 text-white font-semibold shadow active:scale-95">+ 新增動作</button>
           </div>
-          {isPickerOpen && (
-            <div className="border rounded-lg p-4 bg-white mt-3">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">選擇部位</label>
-                  <select value={pickerBodyPart} onChange={(e) => setPickerBodyPart(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-black">
-                    <option value="" style={{ color: '#000' }}>全部</option>
-                    {(bodyParts || []).map((bp) => (
-                      <option key={bp} value={bp} style={{ color: '#000' }}>{bp}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">選擇常用動作</label>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-56 overflow-auto pr-1">
-                    {(commonExercises || []).map((ex) => (
-                      <button
-                        key={ex._id}
-                        type="button"
-                        onClick={() => {
-                          setExercises((prev) => [...prev, { exerciseName: ex.name, bodyPart: ex.bodyPart, exerciseId: ex._id, sets: [{ weight: 0, reps: 0 }] }]);
-                          setIsPickerOpen(false);
-                          showToast(`已加入：${ex.name}`);
-                          try { document.getElementById('exercise-bottom')?.scrollIntoView({ behavior: 'smooth' }); } catch {}
-                        }}
-                        className="px-3 py-2 border rounded hover:bg-gray-50 text-sm text-black transition active:scale-95 text-left"
-                      >
-                        {ex.name}
-                      </button>
-                    ))}
-                  </div>
-                  <div className="mt-3">
-                    <button type="button" onClick={() => { setExercises((prev) => [...prev, { exerciseName: '', bodyPart: pickerBodyPart || undefined, exerciseId: '', sets: [{ weight: 0, reps: 0 }] }]); setIsPickerOpen(false); }} className="px-3 py-2 border rounded text-sm text-gray-700 hover:bg-gray-50 transition active:scale-95">或加入空白動作</button>
-                  </div>
+          <BottomSheet open={isPickerOpen} onClose={() => setIsPickerOpen(false)}>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">選擇部位</label>
+                <select value={pickerBodyPart} onChange={(e) => setPickerBodyPart(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0A84FF] focus:border-transparent text-black">
+                  <option value="" style={{ color: '#000' }}>全部</option>
+                  {(bodyParts || []).map((bp) => (
+                    <option key={bp} value={bp} style={{ color: '#000' }}>{bp}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">選擇常用動作</label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-56 overflow-auto pr-1">
+                  {(commonExercises || []).map((ex) => (
+                    <button
+                      key={ex._id}
+                      type="button"
+                      onClick={() => {
+                        setExercises((prev) => [...prev, { exerciseName: ex.name, bodyPart: ex.bodyPart, exerciseId: ex._id, sets: [{ weight: 0, reps: 8 }] }]);
+                        setIsPickerOpen(false);
+                        showToast(`已加入：${ex.name}`);
+                        try { document.getElementById('exercise-bottom')?.scrollIntoView({ behavior: 'smooth' }); } catch {}
+                      }}
+                      className="px-3 py-2 border rounded hover:bg-gray-50 text-sm text-black transition active:scale-95 text-left"
+                    >
+                      {ex.name}
+                    </button>
+                  ))}
                 </div>
               </div>
             </div>
-          )}
+          </BottomSheet>
         </div>
 
         <div>
@@ -389,7 +435,20 @@ function WorkoutForm({ initialData, onCancel, onSubmit }: {
 
         <div className="flex gap-4 pt-6">
           <button onClick={onCancel} className="flex-1 py-3 px-4 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors active:scale-95">取消</button>
-          <button onClick={() => onSubmit({ date, exercises, notes })} className="flex-1 py-3 px-4 bg-gradient-to-r from-green-500 to-blue-600 text-white font-medium rounded-lg hover:from-green-600 hover:to-blue-700 transition-all duration-200 active:scale-95">{initialData ? '儲存變更' : '新增紀錄'}</button>
+          <button
+            onClick={() => {
+              // 前端驗證：必須有 exerciseId，且 reps >= 1
+              const invalid = exercises.some(ex => !ex.exerciseId || ex.sets.some(s => !s.reps || s.reps < 1));
+              if (invalid) {
+                alert('請從常用動作選擇項目，並確保每組次數至少為 1');
+                return;
+              }
+              onSubmit({ date, exercises, notes });
+            }}
+            className="flex-1 py-3 px-4 bg-gradient-to-r from-green-500 to-blue-600 text-white font-medium rounded-lg hover:from-green-600 hover:to-blue-700 transition-all duration-200 active:scale-95"
+          >
+            {initialData ? '儲存變更' : '新增紀錄'}
+          </button>
         </div>
       </div>
       {toast && (

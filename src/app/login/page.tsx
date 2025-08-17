@@ -7,6 +7,8 @@ import { LoginData } from '@/lib/api';
 import { useLoginMutation } from '@/lib/authApi';
 import { useDispatch } from 'react-redux';
 import { setToken, setUser } from '@/lib/authSlice';
+import Button from '@/components/Button';
+import Toast from '@/components/Toast';
 
 export default function LoginPage() {
   const [formData, setFormData] = useState<LoginData>({
@@ -18,6 +20,9 @@ export default function LoginPage() {
   const router = useRouter();
   const [login] = useLoginMutation();
   const dispatch = useDispatch();
+  const [toastOpen, setToastOpen] = useState(false);
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const [toastVariant, setToastVariant] = useState<'default'|'success'|'error'>('default');
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -39,7 +44,10 @@ export default function LoginPage() {
       const response = await login(formData).unwrap();
       dispatch(setToken(response.accessToken));
       if (response.user) dispatch(setUser(response.user));
-      router.push('/profile');
+      setToastVariant('success');
+      setToastMsg('登入成功');
+      setToastOpen(true);
+      setTimeout(() => router.push('/profile'), 400);
     } catch (err: unknown) {
       const errorMessage = err instanceof Error && 'response' in err && 
         typeof err.response === 'object' && err.response !== null &&
@@ -49,6 +57,9 @@ export default function LoginPage() {
         ? err.response.data.message
         : '登入失敗，請檢查用戶名和密碼';
       setError(errorMessage);
+      setToastVariant('error');
+      setToastMsg(errorMessage);
+      setToastOpen(true);
     } finally {
       setLoading(false);
     }
@@ -71,11 +82,6 @@ export default function LoginPage() {
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
           <form className="space-y-6" onSubmit={handleSubmit}>
-            {error && (
-              <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded">
-                {error}
-              </div>
-            )}
 
             <div>
               <label htmlFor="username" className="block text-sm font-medium text-gray-700">
@@ -112,13 +118,9 @@ export default function LoginPage() {
             </div>
 
             <div>
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
-              >
+              <Button type="submit" disabled={loading} className="w-full">
                 {loading ? '登入中...' : '登入'}
-              </button>
+              </Button>
             </div>
           </form>
 
@@ -143,6 +145,7 @@ export default function LoginPage() {
           </div>
         </div>
       </div>
+      <Toast open={toastOpen} message={toastMsg} variant={toastVariant} onClose={() => setToastOpen(false)} />
     </div>
   );
 } 

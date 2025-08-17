@@ -6,9 +6,12 @@ import { useEffect, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '@/lib/store';
 import { logout as logoutAction } from '@/lib/authSlice';
+import Button from '@/components/Button';
 
 export default function Navigation() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [animIn, setAnimIn] = useState(false);
   const token = useSelector((s: RootState) => s.auth.token);
   const dispatch = useDispatch();
   const router = useRouter();
@@ -23,62 +26,91 @@ export default function Navigation() {
     router.push('/');
   };
 
+  // 控制進出場動畫
+  useEffect(() => {
+    if (open) {
+      requestAnimationFrame(() => setAnimIn(true));
+    } else {
+      setAnimIn(false);
+    }
+  }, [open]);
+
+  const closeMenu = () => {
+    setAnimIn(false);
+    setTimeout(() => setOpen(false), 180);
+  };
+
+  const MenuItems = ({ stagger = false }: { stagger?: boolean }) => {
+    const base = `block sm:inline-block px-3 py-2 rounded-md text-sm font-medium transition-all duration-150`;
+    const enter = animIn ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-1';
+    const item = (i: number, cls: string) => ({
+      className: `${base} ${cls} ${stagger ? enter : ''}`,
+      style: stagger ? { transitionDelay: `${i * 30}ms` } as React.CSSProperties : undefined,
+    });
+    return (
+      <>
+        {isLoggedIn ? (
+          <>
+            <Link href="/nutrition" {...item(0, 'text-gray-700 hover:text-gray-900')}>飲食紀錄</Link>
+            <Link href="/workout" {...item(1, 'text-gray-700 hover:text-gray-900')}>健身紀錄</Link>
+            <Link href="/profile" {...item(2, 'text-gray-700 hover:text-gray-900')}>個人資料</Link>
+            <div className={`px-3 py-2 sm:px-0 sm:py-0 ${stagger ? enter : ''}`} style={stagger ? { transitionDelay: `${3 * 30}ms` } : undefined}>
+              <Button onClick={handleLogout} className="!px-4 !py-2 !text-sm w-full sm:w-auto" variant="secondary">登出</Button>
+            </div>
+          </>
+        ) : (
+          <>
+            <Link href="/login" {...item(0, 'text-gray-700 hover:text-gray-900')}>登入</Link>
+            <Link href="/register" {...item(1, 'bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md')}>註冊</Link>
+          </>
+        )}
+      </>
+    );
+  };
+
   return (
     <nav className="bg-white shadow-sm border-b">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           <div className="flex items-center">
-            <Link href="/" className="text-xl font-bold text-gray-900">
-              健康管理系統
-            </Link>
+            <Link href="/" className="text-xl font-bold text-gray-900">健康管理系統</Link>
           </div>
-          
-          <div className="flex items-center space-x-4">
-            {isLoggedIn ? (
-              <>
-                <Link
-                  href="/nutrition"
-                  className="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
-                >
-                  飲食紀錄
-                </Link>
-                <Link
-                  href="/workout"
-                  className="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
-                >
-                  健身紀錄
-                </Link>
-                <Link
-                  href="/profile"
-                  className="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
-                >
-                  個人資料
-                </Link>
-                <button
-                  onClick={handleLogout}
-                  className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-md text-sm font-medium"
-                >
-                  登出
-                </button>
-              </>
-            ) : (
-              <>
-                <Link
-                  href="/login"
-                  className="text-gray-700 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
-                >
-                  登入
-                </Link>
-                <Link
-                  href="/register"
-                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium"
-                >
-                  註冊
-                </Link>
-              </>
-            )}
+          {/* Desktop */}
+          <div className="hidden sm:flex items-center space-x-4">
+            <MenuItems />
           </div>
+          {/* Mobile hamburger */}
+          <button
+            className="sm:hidden inline-flex items-center justify-center p-2 rounded-md text-gray-600 hover:bg-gray-100"
+            aria-label="Toggle menu"
+            onClick={() => setOpen((v) => !v)}
+          >
+            <svg className="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              {open ? (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              ) : (
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              )}
+            </svg>
+          </button>
         </div>
+        {/* Mobile dropdown as overlay with blur + transition */}
+        {open && (
+          <>
+            <div
+              className={`fixed inset-x-0 top-16 bottom-0 z-40 bg-white/40 backdrop-blur-sm sm:hidden transition-opacity duration-200 ${animIn ? 'opacity-100' : 'opacity-0'}`}
+              onClick={closeMenu}
+            />
+            <div className="fixed top-16 inset-x-0 z-50 sm:hidden">
+              <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                <div className={`rounded-b-xl border border-t-0 bg-white shadow-md pb-3 pt-2 transition-all duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] ${animIn ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2'}`}
+                >
+                  <MenuItems stagger />
+                </div>
+              </div>
+            </div>
+          </>
+        )}
       </div>
     </nav>
   );
