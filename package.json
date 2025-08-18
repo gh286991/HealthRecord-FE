@@ -6,7 +6,11 @@
     "dev": "next dev --turbopack -p 3030",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "cypress:run": "cypress run",
+    "cypress:run:workout": "cypress run --spec cypress/e2e/workout.cy.ts",
+    "cypress:open": "cypress open",
+    "cypress:report": "cypress-mochawesome-reporter --reportDir cypress/reports/html --assetsDir cypress/reports/assets || true"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.1.1",
@@ -33,8 +37,12 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "cypress": "^13.15.0",
+    "cypress-mochawesome-reporter": "^4.0.0",
     "eslint": "^9",
     "eslint-config-next": "15.3.4",
+    "mochawesome": "^7.1.3",
+    
     "sharp": "^0.34.2",
     "tailwindcss": "^4",
     "typescript": "^5"
