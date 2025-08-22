@@ -2,8 +2,9 @@
 
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import type { RegisterData, LoginData, UserProfile, UpdateUserData } from '@/lib/api';
+import { API_BASE_URL } from '@/lib/api';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:9090';
+// 使用共用的 API_BASE_URL，避免不同檔案 fallback 不一致
 
 export const authApiRtk = createApi({
   reducerPath: 'authApi',

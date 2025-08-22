@@ -1,6 +1,7 @@
 import axios from 'axios';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://devhealthjapi.zeabur.app';
+// 匯出統一的 API Base URL，所有 API 模組共用，避免不同檔案 fallback 不一致
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://devhealthjapi.zeabur.app';
 
 // 建立 axios 實例
 const api = axios.create({
