@@ -23,6 +23,7 @@ export default function Navigation() {
   const handleLogout = () => {
     dispatch(logoutAction());
     setIsLoggedIn(false);
+    closeMenu(); // 登出後關閉選單
     router.push('/');
   };
 
@@ -40,6 +41,11 @@ export default function Navigation() {
     setTimeout(() => setOpen(false), 180);
   };
 
+  // 處理導覽項目點擊，點擊後關閉選單
+  const handleNavItemClick = () => {
+    closeMenu();
+  };
+
   const MenuItems = ({ stagger = false }: { stagger?: boolean }) => {
     const base = `block sm:inline-block px-3 py-2 rounded-md text-sm font-medium transition-all duration-150`;
     const enter = animIn ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-1';
@@ -51,17 +57,17 @@ export default function Navigation() {
       <>
         {isLoggedIn ? (
           <>
-            <Link href="/nutrition" {...item(0, 'text-gray-700 hover:text-gray-900')}>飲食紀錄</Link>
-            <Link href="/workout" {...item(1, 'text-gray-700 hover:text-gray-900')}>健身紀錄</Link>
-            <Link href="/profile" {...item(2, 'text-gray-700 hover:text-gray-900')}>個人資料</Link>
+            <Link href="/nutrition" onClick={handleNavItemClick} {...item(0, 'text-gray-700 hover:text-gray-900')}>飲食紀錄</Link>
+            <Link href="/workout" onClick={handleNavItemClick} {...item(1, 'text-gray-700 hover:text-gray-900')}>健身紀錄</Link>
+            <Link href="/profile" onClick={handleNavItemClick} {...item(2, 'text-gray-700 hover:text-gray-900')}>個人資料</Link>
             <div className={`px-3 py-2 sm:px-0 sm:py-0 ${stagger ? enter : ''}`} style={stagger ? { transitionDelay: `${3 * 30}ms` } : undefined}>
               <Button onClick={handleLogout} className="!px-4 !py-2 !text-sm w-full sm:w-auto" variant="secondary">登出</Button>
             </div>
           </>
         ) : (
           <>
-            <Link href="/login" {...item(0, 'text-gray-700 hover:text-gray-900')}>登入</Link>
-            <Link href="/register" {...item(1, 'bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md')}>註冊</Link>
+            <Link href="/login" onClick={handleNavItemClick} {...item(0, 'text-gray-700 hover:text-gray-900')}>登入</Link>
+            <Link href="/register" onClick={handleNavItemClick} {...item(1, 'bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md')}>註冊</Link>
           </>
         )}
       </>

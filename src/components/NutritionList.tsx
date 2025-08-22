@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import IOSDatePicker from './ios/IOSDatePicker';
 import { nutritionApi, NutritionRecord, DailyNutritionResponse } from '@/lib/api';
 import Image from 'next/image';
 
@@ -103,11 +104,10 @@ export default function NutritionList({ onAddNew, onEdit }: NutritionListProps) 
         <div className="flex flex-col sm:flex-row gap-6 items-start sm:items-center">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">選擇日期</label>
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-gray-900"
+            <IOSDatePicker
+              selectedDate={selectedDate}
+              onChange={setSelectedDate}
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-gray-900 w-full"
             />
           </div>
           

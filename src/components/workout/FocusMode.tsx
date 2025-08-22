@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { WorkoutExercise, useGetCommonExercisesQuery } from '@/lib/workoutApi';
-import BottomSheet from '@/components/BottomSheet';
+import IOSDualWheelPicker from '@/components/ios/IOSDualWheelPicker';
 
 interface FocusModeProps {
   open: boolean;
@@ -23,8 +23,7 @@ export default function FocusMode({ open, onClose, exercises, setExercises, body
   const [restRunning, setRestRunning] = useState(false);
   const [pendingRest, setPendingRest] = useState<{ exIdx: number; setIdx: number } | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [pickerBodyPart, setPickerBodyPart] = useState<string>('');
-  const { data: focusCommonExercises } = useGetCommonExercisesQuery(pickerBodyPart || undefined);
+  const { data: focusCommonExercises } = useGetCommonExercisesQuery(undefined);
 
   useEffect(() => {
     if (!open) return;
@@ -294,45 +293,20 @@ export default function FocusMode({ open, onClose, exercises, setExercises, body
               >
                 + 新增/切換動作
               </button>
-              
-              <BottomSheet open={pickerOpen} onClose={() => setPickerOpen(false)}>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">選擇部位</label>
-                    <select 
-                      value={pickerBodyPart} 
-                      onChange={(e) => setPickerBodyPart(e.target.value)} 
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0A84FF] focus:border-transparent text-black"
-                    >
-                      <option value="" style={{ color: '#000' }}>全部</option>
-                      {(bodyParts || []).map((bp) => (
-                        <option key={bp} value={bp} style={{ color: '#000' }}>{bp}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">選擇常用動作</label>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-56 overflow-auto pr-1">
-                      {(focusCommonExercises || []).map((ex) => (
-                        <button
-                          key={ex._id}
-                          type="button"
-                          onClick={() => {
-                            setExercises((prev) => [...prev, { exerciseName: ex.name, bodyPart: ex.bodyPart, exerciseId: ex._id, sets: [{ weight: 0, reps: 8 }] }]);
-                            setPickerOpen(false);
-                            setCurrentExerciseIndex(exercises.length);
-                            setCurrentSetIndex(0);
-                            onToast(`已加入：${ex.name}`);
-                          }}
-                          className="px-3 py-2 border rounded hover:bg-gray-50 text-sm text-black transition text-left"
-                        >
-                          {ex.name}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </BottomSheet>
+              <IOSDualWheelPicker
+                open={pickerOpen}
+                title="新增動作"
+                bodyParts={(bodyParts || [])}
+                exercises={(focusCommonExercises || []).map(e => ({ _id: e._id, name: e.name, bodyPart: e.bodyPart }))}
+                onClose={() => setPickerOpen(false)}
+                onConfirm={(ex) => {
+                  setExercises((prev) => [...prev, { exerciseName: ex.name, bodyPart: ex.bodyPart, exerciseId: ex._id, sets: [{ weight: 0, reps: 8 }] }]);
+                  setPickerOpen(false);
+                  setCurrentExerciseIndex(exercises.length);
+                  setCurrentSetIndex(0);
+                  onToast(`已加入：${ex.name}`);
+                }}
+              />
             </div>
           </div>
         ) : (
@@ -364,44 +338,7 @@ export default function FocusMode({ open, onClose, exercises, setExercises, body
               </button>
             </div>
             
-            <BottomSheet open={pickerOpen} onClose={() => setPickerOpen(false)}>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">選擇部位</label>
-                  <select 
-                    value={pickerBodyPart} 
-                    onChange={(e) => setPickerBodyPart(e.target.value)} 
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0A84FF] focus:border-transparent text-black"
-                  >
-                    <option value="" style={{ color: '#000' }}>全部</option>
-                    {(bodyParts || []).map((bp) => (
-                      <option key={bp} value={bp} style={{ color: '#000' }}>{bp}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">選擇常用動作</label>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-56 overflow-auto pr-1">
-                    {(focusCommonExercises || []).map((ex) => (
-                      <button
-                        key={ex._id}
-                        type="button"
-                        onClick={() => {
-                          setExercises((prev) => [...prev, { exerciseName: ex.name, bodyPart: ex.bodyPart, exerciseId: ex._id, sets: [{ weight: 0, reps: 8 }] }]);
-                          setPickerOpen(false);
-                          setCurrentExerciseIndex(exercises.length);
-                          setCurrentSetIndex(0);
-                          onToast(`已加入：${ex.name}`);
-                        }}
-                        className="px-3 py-2 border rounded hover:bg-gray-50 text-sm text-black transition text-left"
-                      >
-                        {ex.name}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </BottomSheet>
+            
           </div>
         )}
       </div>

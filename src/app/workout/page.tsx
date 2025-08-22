@@ -2,11 +2,12 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import IOSDatePicker from '@/components/ios/IOSDatePicker';
+import IOSDualWheelPicker from '@/components/ios/IOSDualWheelPicker';
 import { tokenUtils } from '@/lib/api';
 import { WorkoutRecord, WorkoutExercise, useCreateWorkoutMutation, useGetWorkoutListQuery, useUpdateWorkoutMutation, useGetBodyPartsQuery, useGetCommonExercisesQuery, useDeleteWorkoutMutation } from '@/lib/workoutApi';
 import Button from '@/components/Button';
 import Card from '@/components/Card';
-import BottomSheet from '@/components/BottomSheet';
 import FocusMode from '@/components/workout/FocusMode';
 // import RecordEditor from '@/components/workout/RecordEditor';
 import Toast from '@/components/Toast';
@@ -126,24 +127,22 @@ export default function WorkoutPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-blue-50 to-purple-50">
-      <div className="container mx-auto py-8 px-4">
+      <div className="container mx-auto py-4 px-4">
         {viewMode === 'list' && (
           <div className="max-w-5xl mx-auto">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
-              <h1 className="text-3xl font-bold text-gray-900 mb-4 sm:mb-0">健身紀錄</h1>
-              <Button onClick={handleAdd} className="px-6 py-3 shadow-lg">
-                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                </svg>
-                新增紀錄
-              </Button>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4">
+              <h1 className="text-3xl font-bold text-gray-900 mb-0 sm:mb-0">健身紀錄</h1>
             </div>
 
             <Card className="p-6 mb-6">
               <div className="flex flex-col sm:flex-row gap-6 items-start sm:items-center">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">選擇日期</label>
-                  <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className="px-4 py-2 border border-[#E1E6EC] rounded-lg focus:ring-2 focus:ring-[#0A84FF] focus:border-transparent text-gray-900" />
+                  <IOSDatePicker
+                    selectedDate={selectedDate}
+                    onChange={setSelectedDate}
+                    className="px-4 py-2 border border-[#E1E6EC] rounded-lg focus:ring-2 focus:ring-[#0A84FF] focus:border-transparent text-gray-900 w-full"
+                  />
                 </div>
                 {listData?.dailyTotals && (
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 w-full">
@@ -254,7 +253,7 @@ export default function WorkoutPage() {
         )}
 
         {(viewMode === 'add' || viewMode === 'edit') && (
-          <div className="max-w-4xl mx-auto p-4">
+          <div className="max-w-4xl mx-auto">
             <div className="mb-6">
               <button onClick={handleCancel} className="inline-flex items-center text-gray-600 hover:text-gray-800 transition-colors">
                 <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -296,9 +295,8 @@ function WorkoutForm({ draftKey, initialData, onCancel, onSubmit }: {
   const [exercises, setExercises] = useState<WorkoutExercise[]>(initialData?.exercises || []);
   const [notes, setNotes] = useState(initialData?.notes || '');
   const { data: bodyParts } = useGetBodyPartsQuery();
-  const [pickerBodyPart, setPickerBodyPart] = useState<string>('');
-  const { data: commonExercises } = useGetCommonExercisesQuery(pickerBodyPart || undefined);
-  const [isPickerOpen, setIsPickerOpen] = useState(false);
+  const { data: commonExercises } = useGetCommonExercisesQuery(undefined); // 取得全部常用動作供雙欄輪盤使用
+  const [dualOpen, setDualOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
   // 專注模式與計時器狀態
@@ -368,10 +366,6 @@ function WorkoutForm({ draftKey, initialData, onCancel, onSubmit }: {
   };
 
   // 動作名稱由常用清單帶入，前端不允許編輯
-
-  const updateExerciseBodyPart = (idx: number, bp: string) => {
-    setExercises((prev) => prev.map((ex, i) => i === idx ? { ...ex, bodyPart: bp } : ex));
-  };
 
   const addSet = (exIdx: number) => {
     setExercises((prev) => prev.map((ex, i) => i === exIdx ? { ...ex, sets: [...ex.sets, { weight: 0, reps: 8 }] } : ex));
@@ -578,7 +572,9 @@ function WorkoutForm({ draftKey, initialData, onCancel, onSubmit }: {
       <div className="space-y-6">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">記錄日期</label>
-          <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-gray-900" />
+          <div className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-900">
+            {new Date(date).toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' })}
+          </div>
         </div>
 
         <div>
@@ -590,46 +586,43 @@ function WorkoutForm({ draftKey, initialData, onCancel, onSubmit }: {
         <div className="space-y-4">
           {exercises.map((ex, idx) => (
             <div key={idx} className="bg-gray-50 rounded-lg p-4">
-              <div className="flex items-end gap-3 mb-3">
+              <div className="flex items-start gap-3 mb-3">
                 <div className="flex-1">
                   <label className="block text-sm font-medium text-gray-700 mb-2">動作名稱</label>
                   <input value={ex.exerciseName} readOnly placeholder="請由下方『新增動作』選擇常用項目" className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-900" />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">部位</label>
-                  <select value={ex.bodyPart || ''} onChange={(e) => updateExerciseBodyPart(idx, e.target.value)} className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-black">
-                    <option value="" style={{ color: '#000' }}>未選擇</option>
-                    {(bodyParts || []).map((bp) => (
-                      <option key={bp} value={bp} style={{ color: '#000' }}>{bp}</option>
-                    ))}
-                  </select>
+                <div className="w-14">
+                  <label className="block text-sm font-medium text-transparent mb-2 select-none">刪除</label>
+                  {exercises.length > 1 && (
+                    <button type="button" onClick={() => removeExercise(idx)} className="inline-flex items-center justify-center h-12 w-14 rounded-md bg-red-500 hover:bg-red-600 text-white transition active:scale-95">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                  )}
                 </div>
-                {exercises.length > 1 && (
-                  <button type="button" onClick={() => removeExercise(idx)} className="text-red-600 hover:text-red-800">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                  </button>
-                )}
               </div>
 
               <div className="space-y-2">
                 {ex.sets.map((s, sIdx) => (
-                  <div key={sIdx} className="flex items-center gap-3 w-full">
-                    <div className="flex-1">
-                      <label className="sr-only">重量(kg)</label>
-                      <input type="number" value={s.weight || ''} onChange={(e) => updateSet(idx, sIdx, 'weight', Number(e.target.value))} className="w-full px-3 h-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-gray-900" />
-                    </div>
-                    <div className="flex-1">
-                      <label className="sr-only">次數</label>
-                      <input type="number" min={1} value={s.reps || ''} onChange={(e) => updateSet(idx, sIdx, 'reps', Math.max(1, Number(e.target.value)))} className="w-full px-3 h-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-gray-900" />
-                    </div>
-                    <div className="w-14 flex items-center">
-                      <button type="button" onClick={() => removeSet(idx, sIdx)} className="inline-flex items-center justify-center h-12 w-14 rounded-md bg-red-500 hover:bg-red-600 text-white transition active:scale-95">
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      </button>
+                  <div key={sIdx} className="space-y-2">
+                    <div className="flex items-start gap-3 w-full">
+                      <div className="flex-1">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">重量 (kg)</label>
+                        <input type="number" value={s.weight || ''} onChange={(e) => updateSet(idx, sIdx, 'weight', Number(e.target.value))} className="w-full px-3 h-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-gray-900" />
+                      </div>
+                      <div className="flex-1">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">次數</label>
+                        <input type="number" min={1} value={s.reps || ''} onChange={(e) => updateSet(idx, sIdx, 'reps', Math.max(1, Number(e.target.value)))} className="w-full px-3 h-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-gray-900" />
+                      </div>
+                      <div className="w-14">
+                        <label className="block text-sm font-medium text-transparent mb-2 select-none">刪除</label>
+                        <button type="button" onClick={() => removeSet(idx, sIdx)} className="inline-flex items-center justify-center h-12 w-14 rounded-md bg-red-500 hover:bg-red-600 text-white transition active:scale-95">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -655,12 +648,10 @@ function WorkoutForm({ draftKey, initialData, onCancel, onSubmit }: {
               type="button"
               onClick={() => {
                 if (exercises.length === 0) {
-                  showToast('請先新增至少一個動作');
-                  return;
+                  // 允許直接新增
                 }
                 setFocusMode(true);
                 setSessionRunning(true);
-                // 若超出範圍才歸零
                 setCurrentExerciseIndex((v) => (v < exercises.length ? v : 0));
                 setCurrentSetIndex((s) => {
                   const ex = exercises[Math.min(currentExerciseIndex, exercises.length - 1)];
@@ -674,45 +665,27 @@ function WorkoutForm({ draftKey, initialData, onCancel, onSubmit }: {
             </button>
             <button 
               type="button" 
-              onClick={() => setIsPickerOpen((v) => !v)} 
+              onClick={() => setDualOpen(true)} 
               className="px-3 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-medium transition-colors"
             >
               + 動作
             </button>
           </div>
-          <BottomSheet open={isPickerOpen} onClose={() => setIsPickerOpen(false)}>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">選擇部位</label>
-                <select value={pickerBodyPart} onChange={(e) => setPickerBodyPart(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0A84FF] focus:border-transparent text-black">
-                  <option value="" style={{ color: '#000' }}>全部</option>
-                  {(bodyParts || []).map((bp) => (
-                    <option key={bp} value={bp} style={{ color: '#000' }}>{bp}</option>
-                  ))}
-                </select>
-              </div>
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">選擇常用動作</label>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-56 overflow-auto pr-1">
-                  {(commonExercises || []).map((ex) => (
-                    <button
-                      key={ex._id}
-                      type="button"
-                      onClick={() => {
-                        setExercises((prev) => [...prev, { exerciseName: ex.name, bodyPart: ex.bodyPart, exerciseId: ex._id, sets: [{ weight: 0, reps: 8 }] }]);
-                        setIsPickerOpen(false);
-                        showToast(`已加入：${ex.name}`);
-                        try { document.getElementById('exercise-bottom')?.scrollIntoView({ behavior: 'smooth' }); } catch {}
-                      }}
-                      className="px-3 py-2 border rounded hover:bg-gray-50 text-sm text-black transition active:scale-95 text-left"
-                    >
-                      {ex.name}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </BottomSheet>
+          {/* 新的雙欄輪盤 */}
+          <IOSDualWheelPicker
+            open={dualOpen}
+            title="新增動作"
+            bodyParts={(bodyParts || [])}
+            exercises={(commonExercises || []).map(e => ({ _id: e._id, name: e.name, bodyPart: e.bodyPart }))}
+            onClose={() => setDualOpen(false)}
+            onConfirm={(ex) => {
+              setExercises((prev) => [...prev, { exerciseName: ex.name, bodyPart: ex.bodyPart, exerciseId: ex._id, sets: [{ weight: 0, reps: 8 }] }]);
+              setDualOpen(false);
+              showToast(`已加入：${ex.name}`);
+              try { document.getElementById('exercise-bottom')?.scrollIntoView({ behavior: 'smooth' }); } catch {}
+            }}
+          />
+          {/* 舊 BottomSheet UI 已移除或保留為隱藏 */}
         </div>
 
         <div>
