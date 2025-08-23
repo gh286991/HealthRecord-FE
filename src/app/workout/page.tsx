@@ -1,9 +1,11 @@
 'use client';
 
-import { useEffect, useState, useCallback, useMemo } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
+import { useStopwatch } from 'react-timer-hook';
+import { useRouter, useSearchParams } from 'next/navigation';
 import IOSDatePicker from '@/components/ios/IOSDatePicker';
 import IOSDualWheelPicker from '@/components/ios/IOSDualWheelPicker';
+import IOSNumericKeypad from '@/components/ios/IOSNumericKeypad';
 import { tokenUtils } from '@/lib/api';
 import { WorkoutRecord, WorkoutExercise, useCreateWorkoutMutation, useGetWorkoutListQuery, useUpdateWorkoutMutation, useGetBodyPartsQuery, useGetCommonExercisesQuery, useDeleteWorkoutMutation } from '@/lib/workoutApi';
 import Button from '@/components/Button';
@@ -11,7 +13,9 @@ import Card from '@/components/Card';
 import FocusMode from '@/components/workout/FocusMode';
 // import RecordEditor from '@/components/workout/RecordEditor';
 import Toast from '@/components/Toast';
+import SwipeRow from '@/components/SwipeRow';
 import ConfirmDialog from '@/components/ConfirmDialog';
+import { useWorkoutTimer } from '@/components/WorkoutTimerContext';
 
 type ViewMode = 'list' | 'add' | 'edit';
 
@@ -25,9 +29,10 @@ export default function WorkoutPage() {
   const [updateWorkout] = useUpdateWorkoutMutation();
   const [deleteWorkout] = useDeleteWorkoutMutation();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [toastOpen, setToastOpen] = useState(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
-  const [toastVariant, setToastVariant] = useState<'default'|'success'|'error'>('default');
+  const [toastVariant, setToastVariant] = useState<'default' | 'success' | 'error'>('default');
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmId, setConfirmId] = useState<string | null>(null);
 
@@ -56,11 +61,13 @@ export default function WorkoutPage() {
   const handleAdd = () => {
     setEditingRecord(null);
     setViewMode('add');
+    try { router.push('/workout?form=add'); } catch { }
   };
 
   const handleEdit = (r: WorkoutRecord) => {
     setEditingRecord(r);
     setViewMode('edit');
+    try { router.push('/workout?form=edit'); } catch { }
   };
 
   const requestDelete = (id: string) => {
@@ -90,6 +97,7 @@ export default function WorkoutPage() {
   const handleCancel = () => {
     setViewMode('list');
     setEditingRecord(null);
+    try { router.push('/workout'); } catch { }
   };
 
   const handleSubmit = async (payload: { date: string; exercises: WorkoutExercise[]; notes?: string; workoutDurationSeconds?: number; totalRestSeconds?: number }) => {
@@ -103,6 +111,7 @@ export default function WorkoutPage() {
       await fetchData();
       setViewMode('list');
       setEditingRecord(null);
+      try { router.push('/workout'); } catch { }
       setToastVariant('success');
       setToastMsg('已儲存健身紀錄');
       setToastOpen(true);
@@ -113,6 +122,19 @@ export default function WorkoutPage() {
       setToastOpen(true);
     }
   };
+
+  // 由 URL 搜尋參數決定畫面模式，確保 Navbar 返回能回到列表
+  useEffect(() => {
+    const form = searchParams?.get('form');
+    if (form === 'add') {
+      setViewMode('add');
+      setEditingRecord(null);
+    } else if (form === 'edit') {
+      setViewMode('edit');
+    } else {
+      setViewMode('list');
+    }
+  }, [searchParams]);
 
   if (!isLoggedIn) {
     return (
@@ -130,9 +152,8 @@ export default function WorkoutPage() {
       <div className="container mx-auto py-4 px-4">
         {viewMode === 'list' && (
           <div className="max-w-5xl mx-auto">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4">
-              <h1 className="text-3xl font-bold text-gray-900 mb-0 sm:mb-0">健身紀錄</h1>
-            </div>
+            {/* 頁面大標題改由上方 Nav 顯示，這裡先隱藏 */}
+            <div className="h-2" />
 
             <Card className="p-6 mb-6">
               <div className="flex flex-col sm:flex-row gap-6 items-start sm:items-center">
@@ -254,14 +275,7 @@ export default function WorkoutPage() {
 
         {(viewMode === 'add' || viewMode === 'edit') && (
           <div className="max-w-4xl mx-auto">
-            <div className="mb-6">
-              <button onClick={handleCancel} className="inline-flex items-center text-gray-600 hover:text-gray-800 transition-colors">
-                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                </svg>
-                返回列表
-              </button>
-            </div>
+            {/* 返回由 Nav 提供，不再使用懸浮 BackBar */}
             <WorkoutForm
               draftKey={editingRecord ? `workout_draft_edit_${editingRecord._id}` : `workout_draft_add_${selectedDate}`}
               initialData={editingRecord ? { recordId: editingRecord._id, date: editingRecord.date.split('T')[0], exercises: editingRecord.exercises, notes: editingRecord.notes } : undefined}
@@ -299,12 +313,37 @@ function WorkoutForm({ draftKey, initialData, onCancel, onSubmit }: {
   const [dualOpen, setDualOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
+  // 手機偵測（小於等於 640px 視為手機）
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    try {
+      const mq = window.matchMedia('(max-width: 640px)');
+      const set = () => setIsMobile(mq.matches);
+      set();
+      mq.addEventListener('change', set);
+      return () => mq.removeEventListener('change', set);
+    } catch {}
+  }, []);
+
+  // 自訂數字鍵盤控制
+  const [numPadOpen, setNumPadOpen] = useState(false);
+  const [numPadTitle, setNumPadTitle] = useState<string>('');
+  const [numPadInitial, setNumPadInitial] = useState<number | string>('');
+  const [numPadAllowDecimal, setNumPadAllowDecimal] = useState<boolean>(false);
+  const [numPadTarget, setNumPadTarget] = useState<{ exIdx: number; setIdx: number; field: 'weight' | 'reps' } | null>(null);
+
+  const openNumPad = useCallback((params: { exIdx: number; setIdx: number; field: 'weight' | 'reps'; title: string; initial: number | string; allowDecimal: boolean; }) => {
+    setNumPadTarget({ exIdx: params.exIdx, setIdx: params.setIdx, field: params.field });
+    setNumPadTitle(params.title);
+    setNumPadInitial(params.initial);
+    setNumPadAllowDecimal(params.allowDecimal);
+    setNumPadOpen(true);
+  }, []);
+
   // 專注模式與計時器狀態
   const [focusMode, setFocusMode] = useState(false);
   const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0);
   const [currentSetIndex, setCurrentSetIndex] = useState(0);
-  const [sessionMs, setSessionMs] = useState(0);
-  const [sessionRunning, setSessionRunning] = useState(false);
   const [restElapsed, setRestElapsed] = useState<number | null>(null);
   const [restRunning, setRestRunning] = useState(false);
   const [pendingRest, setPendingRest] = useState<{ exIdx: number; setIdx: number } | null>(null);
@@ -312,13 +351,17 @@ function WorkoutForm({ draftKey, initialData, onCancel, onSubmit }: {
   const [focusPickerOpen, setFocusPickerOpen] = useState(false);
   const [focusPickerBodyPart, setFocusPickerBodyPart] = useState<string>('');
   const { data: focusCommonExercises } = useGetCommonExercisesQuery(focusPickerBodyPart || undefined);
-  const [timerOpen, setTimerOpen] = useState<boolean>(false);
+  const [, setTimerOpen] = useState<boolean>(false);
+  // 使用 react-timer-hook 取代手刻碼錶
+  const trainWatch = useStopwatch({ autoStart: false });
+  const restWatch = useStopwatch({ autoStart: false });
+  const { setTotalSeconds: setGlobalSeconds, setRunning: setGlobalRunning } = useWorkoutTimer();
 
-  let toastTimerRef: number | undefined;
+  const toastTimerRef = useRef<number | null>(null);
   const showToast = useCallback((message: string) => {
     setToast(message);
-    if (toastTimerRef) window.clearTimeout(toastTimerRef);
-    toastTimerRef = window.setTimeout(() => setToast(null), 1200) as unknown as number;
+    if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
+    toastTimerRef.current = window.setTimeout(() => setToast(null), 1200) as unknown as number;
   }, []);
 
   // --- Draft (localStorage) ---
@@ -331,9 +374,12 @@ function WorkoutForm({ draftKey, initialData, onCancel, onSubmit }: {
       if (draft.date) setDate(draft.date);
       if (draft.exercises) setExercises(draft.exercises);
       if (typeof draft.notes === 'string') setNotes(draft.notes);
-      if (typeof draft.sessionMs === 'number') setSessionMs(draft.sessionMs);
+      if (typeof draft.sessionMs === 'number' && draft.sessionMs > 0) {
+        // 恢復主碼錶到草稿的經過時間
+        try { trainWatch.reset(new Date(Date.now() - draft.sessionMs), false); } catch { }
+      }
       showToast('已從草稿恢復');
-    } catch {}
+    } catch { }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draftKey]);
 
@@ -341,24 +387,33 @@ function WorkoutForm({ draftKey, initialData, onCancel, onSubmit }: {
   useEffect(() => {
     const id = window.setTimeout(() => {
       try {
-        const payload = JSON.stringify({ date, exercises, notes, sessionMs });
+        const payload = JSON.stringify({ date, exercises, notes, sessionMs: trainWatch.totalSeconds * 1000 });
         window.localStorage.setItem(draftKey, payload);
-      } catch {}
+      } catch { }
     }, 1000) as unknown as number;
     return () => window.clearTimeout(id);
-  }, [draftKey, date, exercises, notes, sessionMs]);
+  }, [draftKey, date, exercises, notes, trainWatch.totalSeconds]);
+
+  // 同步訓練碼錶到全域 Nav 顯示
+  useEffect(() => {
+    setGlobalSeconds(trainWatch.totalSeconds);
+  }, [trainWatch.totalSeconds, setGlobalSeconds]);
+
+  useEffect(() => {
+    setGlobalRunning(trainWatch.isRunning);
+  }, [trainWatch.isRunning, setGlobalRunning]);
 
   // 提醒離開頁面（有未儲存內容）
   useEffect(() => {
     const handler = (e: BeforeUnloadEvent) => {
-      if (exercises.length > 0 || notes || sessionMs > 0) {
+      if (exercises.length > 0 || notes || trainWatch.totalSeconds > 0) {
         e.preventDefault();
         e.returnValue = '';
       }
     };
     window.addEventListener('beforeunload', handler);
     return () => window.removeEventListener('beforeunload', handler);
-  }, [exercises.length, notes, sessionMs]);
+  }, [exercises.length, notes, trainWatch.totalSeconds]);
 
   const removeExercise = (idx: number) => {
     setExercises((prev) => prev.filter((_, i) => i !== idx));
@@ -368,7 +423,7 @@ function WorkoutForm({ draftKey, initialData, onCancel, onSubmit }: {
   // 動作名稱由常用清單帶入，前端不允許編輯
 
   const addSet = (exIdx: number) => {
-    setExercises((prev) => prev.map((ex, i) => i === exIdx ? { ...ex, sets: [...ex.sets, { weight: 0, reps: 8 }] } : ex));
+    setExercises((prev) => prev.map((ex, i) => i === exIdx ? { ...ex, sets: [...ex.sets, { weight: 0, reps: 8, completed: false }] } : ex));
     showToast('已新增一組');
   };
 
@@ -377,7 +432,7 @@ function WorkoutForm({ draftKey, initialData, onCancel, onSubmit }: {
     showToast('已刪除一組');
   };
 
-  const updateSet = (exIdx: number, setIdx: number, field: 'weight' | 'reps', value: number) => {
+  const updateSet = (exIdx: number, setIdx: number, field: 'weight' | 'reps' | 'completed', value: number | boolean) => {
     setExercises((prev) => prev.map((ex, i) => {
       if (i !== exIdx) return ex;
       const sets = ex.sets.map((s, sIdx) => sIdx === setIdx ? { ...s, [field]: value } : s);
@@ -389,7 +444,7 @@ function WorkoutForm({ draftKey, initialData, onCancel, onSubmit }: {
 
   // 簡短時間列：總時間 / 運動 / 休息
   const shortStats = useMemo(() => {
-    const totalSec = Math.floor(sessionMs / 1000);
+    const totalSec = trainWatch.totalSeconds;
     const restSec = Math.max(0, exercises.reduce((acc, ex) => acc + ex.sets.reduce((a, set) => a + (set.restSeconds || 0), 0), 0) + (restElapsed ?? 0));
     const trainSec = Math.max(0, totalSec - restSec);
     const fmt = (sec: number) => {
@@ -398,25 +453,17 @@ function WorkoutForm({ draftKey, initialData, onCancel, onSubmit }: {
       return `${m}:${s}`;
     };
     return { total: fmt(totalSec), rest: fmt(restSec), train: fmt(trainSec) };
-  }, [sessionMs, exercises, restElapsed]);
+  }, [trainWatch.totalSeconds, exercises, restElapsed]);
 
-  // 訓練碼錶（秒增）
+  // 移除本地 sessionMs 狀態，直接以 trainWatch 為準
+
+  // 同步休息碼錶秒數到 restElapsed
   useEffect(() => {
-    if (!sessionRunning) return;
-    const id = window.setInterval(() => setSessionMs((ms) => ms + 1000), 1000) as unknown as number;
-    return () => window.clearInterval(id);
-  }, [sessionRunning]);
+    if (!restRunning) return;
+    setRestElapsed(restWatch.totalSeconds);
+  }, [restRunning, restWatch.totalSeconds]);
 
-  // 休息計時（累加）
-  useEffect(() => {
-    if (!restRunning || restElapsed === null) return;
-    const id = window.setInterval(() => {
-      setRestElapsed((sec) => (sec === null ? sec : sec + 1));
-    }, 1000) as unknown as number;
-    return () => window.clearInterval(id);
-  }, [restRunning, restElapsed]);
 
-  
 
   const formatTime = useCallback((ms: number) => {
     const totalSec = Math.floor(ms / 1000);
@@ -458,12 +505,13 @@ function WorkoutForm({ draftKey, initialData, onCancel, onSubmit }: {
 
   const startRestFor = useCallback((exIdx: number, setIdx: number) => {
     setPendingRest({ exIdx, setIdx });
+    restWatch.reset(undefined, true);
     setRestElapsed(0);
     setRestRunning(true);
-  }, []);
+  }, [restWatch]);
 
   const finishRestAndAdvance = useCallback(() => {
-    const spent = restElapsed === null ? 0 : restElapsed;
+    const spent = restWatch.totalSeconds || 0;
     if (pendingRest) {
       setExercises((prev) => prev.map((ex, i) => {
         if (i !== pendingRest.exIdx) return ex;
@@ -479,6 +527,8 @@ function WorkoutForm({ draftKey, initialData, onCancel, onSubmit }: {
       const newSet = { weight: last?.weight ?? 0, reps: last?.reps ?? 8 };
       return { ...ex, sets: [...ex.sets, newSet] };
     }));
+    restWatch.pause();
+    restWatch.reset(undefined, false);
     setRestRunning(false);
     setRestElapsed(null);
     setPendingRest(null);
@@ -487,7 +537,7 @@ function WorkoutForm({ draftKey, initialData, onCancel, onSubmit }: {
       const length = (ex?.sets?.length ?? 0) + 1;
       return Math.max(0, length - 1);
     });
-  }, [currentExerciseIndex, currentSetIndex, exercises, pendingRest, restElapsed, setExercises]);
+  }, [currentExerciseIndex, currentSetIndex, exercises, pendingRest, restWatch, setExercises]);
 
   // 休息結束由使用者主動結束（累加計時，不自動前進）
 
@@ -534,20 +584,8 @@ function WorkoutForm({ draftKey, initialData, onCancel, onSubmit }: {
 
   return (
     <div className="bg-white rounded-2xl shadow-xl p-6">
-      <h2 className="text-2xl font-bold text-gray-900 mb-6">{initialData ? '編輯健身紀錄' : '新增健身紀錄'}</h2>
-
-      {/* 懸浮時間小工具（FAB） */}
-      <button
-        type="button"
-        onClick={() => setTimerOpen(!timerOpen)}
-        className="fixed bottom-6 right-6 z-50 rounded-full shadow-lg px-4 py-3 bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-2"
-        aria-label="開啟/關閉時間工具"
-      >
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m-3-11a9 9 0 100 18 9 9 0 000-18z" /></svg>
-        <span className="tabular-nums text-sm">{shortStats.total}</span>
-      </button>
-      {timerOpen && (
-        <div className="fixed bottom-24 right-6 z-50 w-[min(92vw,360px)] bg-white rounded-xl shadow-2xl border border-gray-200 p-4">
+      {false && (
+        <div className="fixed top-16 right-6 z-50 w-[min(92vw,360px)] bg-white rounded-xl shadow-2xl border border-gray-200 p-4">
           <div className="flex items-center justify-between mb-3">
             <div className="text-sm text-gray-500">訓練時間</div>
             <button onClick={() => setTimerOpen(false)} className="text-gray-400 hover:text-gray-600">✕</button>
@@ -558,28 +596,61 @@ function WorkoutForm({ draftKey, initialData, onCancel, onSubmit }: {
             <div className="flex items-center gap-2"><span className="text-xs text-gray-500">休</span><span className="text-rose-700 tabular-nums">{shortStats.rest}</span></div>
           </div>
           <div className="flex items-center justify-end gap-2">
-            <button type="button" onClick={() => setSessionRunning((v) => !v)} className={`px-3 py-1.5 rounded-lg text-white text-sm ${sessionRunning ? 'bg-red-500 hover:bg-red-600' : 'bg-emerald-500 hover:bg-emerald-600'}`}>{sessionRunning ? '暫停' : '開始'}</button>
+            <button
+              type="button"
+              onClick={() => {
+                if (trainWatch.isRunning) {
+                  trainWatch.pause();
+                } else {
+                  trainWatch.start();
+                }
+              }}
+              className={`px-3 py-1.5 rounded-lg text-white text-sm ${trainWatch.isRunning ? 'bg-red-500 hover:bg-red-600' : 'bg-emerald-500 hover:bg-emerald-600'}`}
+            >
+              {trainWatch.isRunning ? '暫停' : '開始'}
+            </button>
             {restElapsed === null ? (
-              <button type="button" onClick={() => { setRestElapsed(0); setRestRunning(true); }} className="px-3 py-1.5 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white text-sm">開始休息</button>
+              <button type="button" onClick={() => { restWatch.reset(undefined, true); setRestElapsed(0); setRestRunning(true); }} className="px-3 py-1.5 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white text-sm">開始休息</button>
             ) : (
-              <button type="button" onClick={() => { setRestRunning(false); setRestElapsed(null); }} className="px-3 py-1.5 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white text-sm">結束休息</button>
+              <button type="button" onClick={() => { restWatch.pause(); restWatch.reset(undefined, false); setRestRunning(false); setRestElapsed(null); }} className="px-3 py-1.5 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white text-sm">結束休息</button>
             )}
-            <button type="button" onClick={() => { setSessionMs(0); setRestElapsed(null); setRestRunning(false); }} className="px-3 py-1.5 rounded-lg bg-gray-200 hover:bg-gray-300 text-gray-800 text-sm">重置</button>
+            <button type="button" onClick={() => {
+              trainWatch.reset(undefined, false);
+              restWatch.pause();
+              restWatch.reset(undefined, false);
+              setRestElapsed(null);
+              setRestRunning(false);
+            }} className="px-3 py-1.5 rounded-lg bg-gray-200 hover:bg-gray-300 text-gray-800 text-sm">重置</button>
           </div>
         </div>
       )}
 
       <div className="space-y-6">
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">記錄日期</label>
-          <div className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-900">
-            {new Date(date).toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' })}
-          </div>
-        </div>
-
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <label className="block text-sm font-medium text-gray-700">訓練項目</label>
+          <div className="flex items-center gap-3 mb-2">
+            <label className="block text-sm font-medium text-gray-700">記錄日期</label>
+            <div className="flex-1 px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-900">
+              {new Date(date).toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' })}
+            </div>
+            {!trainWatch.isRunning ? (
+              <button
+                type="button"
+                onClick={() => {
+                  console.log('開始訓練按鈕被點擊');
+                  trainWatch.start();
+                  setTimerOpen(true);
+                  console.log('設置 sessionRunning = true');
+                  setGlobalRunning(true);
+                }}
+                className="px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-sm whitespace-nowrap"
+              >
+                開始訓練
+              </button>
+            ) : (
+              <div className="text-xs text-gray-500 whitespace-nowrap">
+                計時中 {formatSec(trainWatch.totalSeconds)}
+              </div>
+            )}
           </div>
         </div>
 
@@ -605,26 +676,66 @@ function WorkoutForm({ draftKey, initialData, onCancel, onSubmit }: {
 
               <div className="space-y-2">
                 {ex.sets.map((s, sIdx) => (
-                  <div key={sIdx} className="space-y-2">
-                    <div className="flex items-start gap-3 w-full">
-                      <div className="flex-1">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">重量 (kg)</label>
-                        <input type="number" value={s.weight || ''} onChange={(e) => updateSet(idx, sIdx, 'weight', Number(e.target.value))} className="w-full px-3 h-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-gray-900" />
-                      </div>
-                      <div className="flex-1">
-                        <label className="block text-sm font-medium text-gray-700 mb-2">次數</label>
-                        <input type="number" min={1} value={s.reps || ''} onChange={(e) => updateSet(idx, sIdx, 'reps', Math.max(1, Number(e.target.value)))} className="w-full px-3 h-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-gray-900" />
-                      </div>
-                      <div className="w-14">
-                        <label className="block text-sm font-medium text-transparent mb-2 select-none">刪除</label>
-                        <button type="button" onClick={() => removeSet(idx, sIdx)} className="inline-flex items-center justify-center h-12 w-14 rounded-md bg-red-500 hover:bg-red-600 text-white transition active:scale-95">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                        </button>
+                  <SwipeRow key={sIdx} onDelete={() => removeSet(idx, sIdx)} className="rounded-lg">
+                    <div className="flex items-center gap-3 w-full p-2">
+                      <button
+                        type="button"
+                        onClick={() => updateSet(idx, sIdx, 'completed', !s.completed)}
+                        className={`h-8 w-8 shrink-0 rounded-md border-2 transition-colors flex items-center justify-center ${s.completed ? 'bg-emerald-500 border-emerald-600 text-white' : 'bg-white border-gray-300 text-gray-400'}`}
+                        aria-label="標記完成"
+                        title="標記完成"
+                      >
+                        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                      </button>
+
+                      <div className="flex items-center gap-2 flex-1">
+                        <label className="sr-only">重量 (kg)</label>
+                        <input
+                          type="number"
+                          value={s.weight || ''}
+                          readOnly={isMobile}
+                          onClick={(e) => {
+                            if (isMobile) {
+                              e.preventDefault();
+                              openNumPad({ exIdx: idx, setIdx: sIdx, field: 'weight', title: '輸入重量 (kg)', initial: s.weight || '', allowDecimal: true });
+                            }
+                          }}
+                          onFocus={(e) => {
+                            if (isMobile) {
+                              e.target.blur();
+                            }
+                          }}
+                          onChange={(e) => updateSet(idx, sIdx, 'weight', Number(e.target.value))}
+                          className="h-10 w-24 px-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-green-500 focus:border-transparent text-gray-900"
+                        />
+                        <span className="text-gray-600">kg</span>
+
+                        <label className="sr-only">次數</label>
+                        <input
+                          type="number"
+                          min={1}
+                          value={s.reps || ''}
+                          readOnly={isMobile}
+                          onClick={(e) => {
+                            if (isMobile) {
+                              e.preventDefault();
+                              openNumPad({ exIdx: idx, setIdx: sIdx, field: 'reps', title: '輸入次數', initial: s.reps || '', allowDecimal: false });
+                            }
+                          }}
+                          onFocus={(e) => {
+                            if (isMobile) {
+                              e.target.blur();
+                            }
+                          }}
+                          onChange={(e) => updateSet(idx, sIdx, 'reps', Math.max(1, Number(e.target.value)))}
+                          className="h-10 w-20 px-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-green-500 focus:border-transparent text-gray-900"
+                        />
+                        <span className="text-gray-600">次</span>
                       </div>
                     </div>
-                  </div>
+                  </SwipeRow>
                 ))}
                 <div className="mt-3">
                   <button
@@ -642,7 +753,13 @@ function WorkoutForm({ draftKey, initialData, onCancel, onSubmit }: {
             </div>
           ))}
           <div id="exercise-bottom" />
-          {/* 置於清單與備註之間的大按鈕與選擇器 */}
+          <button
+              type="button"
+              onClick={() => setDualOpen(true)}
+              className="w-full py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-medium transition-colors"
+            >
+              + 動作
+            </button>
           <div className="mt-2 flex gap-2">
             <button
               type="button"
@@ -651,7 +768,8 @@ function WorkoutForm({ draftKey, initialData, onCancel, onSubmit }: {
                   // 允許直接新增
                 }
                 setFocusMode(true);
-                setSessionRunning(true);
+                // 專注模式改用自身碼錶，這裡暫停外部碼錶
+                trainWatch.pause();
                 setCurrentExerciseIndex((v) => (v < exercises.length ? v : 0));
                 setCurrentSetIndex((s) => {
                   const ex = exercises[Math.min(currentExerciseIndex, exercises.length - 1)];
@@ -663,14 +781,8 @@ function WorkoutForm({ draftKey, initialData, onCancel, onSubmit }: {
             >
               🎯 專注
             </button>
-            <button 
-              type="button" 
-              onClick={() => setDualOpen(true)} 
-              className="px-3 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-medium transition-colors"
-            >
-              + 動作
-            </button>
           </div>
+
           {/* 新的雙欄輪盤 */}
           <IOSDualWheelPicker
             open={dualOpen}
@@ -682,7 +794,7 @@ function WorkoutForm({ draftKey, initialData, onCancel, onSubmit }: {
               setExercises((prev) => [...prev, { exerciseName: ex.name, bodyPart: ex.bodyPart, exerciseId: ex._id, sets: [{ weight: 0, reps: 8 }] }]);
               setDualOpen(false);
               showToast(`已加入：${ex.name}`);
-              try { document.getElementById('exercise-bottom')?.scrollIntoView({ behavior: 'smooth' }); } catch {}
+              try { document.getElementById('exercise-bottom')?.scrollIntoView({ behavior: 'smooth' }); } catch { }
             }}
           />
           {/* 舊 BottomSheet UI 已移除或保留為隱藏 */}
@@ -707,8 +819,8 @@ function WorkoutForm({ draftKey, initialData, onCancel, onSubmit }: {
                 alert('請從常用動作選擇項目，並確保每組次數至少為 1');
                 return;
               }
-              onSubmit({ date, exercises, notes, workoutDurationSeconds: Math.floor(sessionMs / 1000) });
-              try { window.localStorage.removeItem(draftKey); } catch {}
+              onSubmit({ date, exercises, notes, workoutDurationSeconds: trainWatch.totalSeconds });
+              try { window.localStorage.removeItem(draftKey); } catch { }
             }}
             className="flex-1 py-3 px-4 bg-gradient-to-r from-green-500 to-blue-600 text-white font-medium rounded-lg hover:from-green-600 hover:to-blue-700 transition-all duration-200 active:scale-95"
           >
@@ -722,18 +834,35 @@ function WorkoutForm({ draftKey, initialData, onCancel, onSubmit }: {
         </div>
       )}
 
+      {/* 手機用自訂數字鍵盤 */}
+      <IOSNumericKeypad
+        open={numPadOpen}
+        onClose={() => setNumPadOpen(false)}
+        onConfirm={(val) => {
+          if (!numPadTarget) return;
+          const { exIdx, setIdx, field } = numPadTarget;
+          const next = field === 'reps' ? Math.max(1, Math.floor(val || 0)) : val;
+          updateSet(exIdx, setIdx, field, field === 'reps' ? next : Number(next));
+          setNumPadOpen(false);
+        }}
+        title={numPadTitle}
+        initialValue={numPadInitial}
+        allowDecimal={numPadAllowDecimal}
+      />
+
       {/* 專注模式疊層 */}
       <FocusMode
         open={focusMode}
         onClose={() => {
           setFocusMode(false);
-          setSessionRunning(false);
+          trainWatch.pause();
         }}
         exercises={exercises}
         setExercises={setExercises}
         bodyParts={bodyParts}
         onToast={showToast}
-        onSessionMsChange={(ms) => setSessionMs(ms)}
+        onSessionMsChange={(ms) => { try { trainWatch.reset(new Date(Date.now() - ms), trainWatch.isRunning); } catch { } }}
+        onTickMs={() => { }}
       />
       {false && (
         <div className="fixed inset-0 z-[60] flex flex-col bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white">
@@ -741,7 +870,7 @@ function WorkoutForm({ draftKey, initialData, onCancel, onSubmit }: {
             <button
               onClick={() => {
                 setFocusMode(false);
-                setSessionRunning(false);
+                trainWatch.pause();
               }}
               className="inline-flex items-center px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15"
             >
@@ -751,7 +880,7 @@ function WorkoutForm({ draftKey, initialData, onCancel, onSubmit }: {
               關閉
             </button>
             <div className="text-sm opacity-80">訓練時間</div>
-            <div className="text-lg font-semibold tabular-nums">{formatTime(sessionMs)}</div>
+            <div className="text-lg font-semibold tabular-nums">{formatTime(trainWatch.totalSeconds * 1000)}</div>
           </div>
 
           <div className="flex-1 px-6 py-4 overflow-y-auto">
@@ -899,10 +1028,10 @@ function WorkoutForm({ draftKey, initialData, onCancel, onSubmit }: {
                 {/* 底部控制列 */}
                 <div className="flex items-center justify-between">
                   <button
-                    onClick={() => setSessionRunning((v) => !v)}
+                    onClick={() => { if (trainWatch.isRunning) trainWatch.pause(); else trainWatch.start(); }}
                     className="px-4 py-3 rounded-xl bg-white/10 hover:bg-white/15"
                   >
-                    {sessionRunning ? '暫停訓練' : '繼續訓練'}
+                    {trainWatch.isRunning ? '暫停訓練' : '繼續訓練'}
                   </button>
                   <div className="text-sm text-gray-300">當前第 {currentExerciseIndex + 1}/{exercises.length} 個動作</div>
                   <div className="flex items-center gap-2">

@@ -1,12 +1,13 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
+import { useEffect, useMemo, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '@/lib/store';
 import { logout as logoutAction } from '@/lib/authSlice';
 import Button from '@/components/Button';
+import { useWorkoutTimer } from '@/components/WorkoutTimerContext';
 
 export default function Navigation() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -15,6 +16,8 @@ export default function Navigation() {
   const token = useSelector((s: RootState) => s.auth.token);
   const dispatch = useDispatch();
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
 
   useEffect(() => {
     setIsLoggedIn(!!token);
@@ -74,12 +77,68 @@ export default function Navigation() {
     );
   };
 
+  // 依目前路徑決定標題（APP 風格）
+  const getTitleFromPath = (path: string): string => {
+    if (!path) return '健康管理系統';
+    const clean = path.split('?')[0];
+    switch (clean) {
+      case '/':
+        return '健康管理系統';
+      case '/nutrition':
+        return '飲食紀錄';
+      case '/workout':
+        return '健身紀錄';
+      case '/profile':
+        return '個人資料';
+      case '/login':
+        return '登入';
+      case '/register':
+        return '註冊';
+      default:
+        return '健康管理系統';
+    }
+  };
+  const currentTitle = getTitleFromPath(pathname || '/');
+  const workoutFormMode = searchParams?.get('form');
+  const isWorkoutForm = (pathname === '/workout') && (workoutFormMode === 'add' || workoutFormMode === 'edit');
+  const { totalSeconds, isRunning, formatMMSS } = useWorkoutTimer();
+  const displayTime = useMemo(() => formatMMSS(totalSeconds), [formatMMSS, totalSeconds]);
+  const forceSticky = (searchParams?.get('navSticky') === '1') || (searchParams?.get('nav') === 'sticky');
+  const shouldStick = isWorkoutForm || forceSticky;
+
   return (
-    <nav className="bg-white shadow-sm border-b">
+    <nav className={`bg-white shadow-sm border-b ${shouldStick ? 'sticky top-0 z-40' : ''}`}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           <div className="flex items-center">
-            <Link href="/" className="text-xl font-bold text-gray-900">健康管理系統</Link>
+            {isWorkoutForm && (
+              <button
+                className="mr-2 h-9 w-9 inline-flex items-center justify-center rounded-full bg-white/90 backdrop-blur border border-gray-200 shadow text-gray-700 hover:bg-white active:scale-95 transition"
+                aria-label="返回"
+                onClick={() => {
+                  try {
+                    if (typeof window !== 'undefined' && window.history.length > 1) {
+                      window.history.back();
+                    } else {
+                      router.push('/workout');
+                    }
+                  } catch {
+                    router.push('/workout');
+                  }
+                }}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+            )}
+            <div className="text-xl font-bold text-gray-900">{currentTitle}</div>
+            {isWorkoutForm && (
+              <div className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs">
+                <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                <span className="tabular-nums">{displayTime}</span>
+              </div>
+            )}
           </div>
           {/* Desktop */}
           <div className="hidden sm:flex items-center space-x-4">

@@ -131,7 +131,8 @@ export default function ProfilePage() {
         <div className="bg-white shadow rounded-lg">
           <div className="px-4 py-5 sm:p-6">
             <div className="flex justify-between items-center mb-6">
-              <h1 className="text-2xl font-bold text-gray-900">個人資料</h1>
+              {/* 標題改由 Nav 呈現 */}
+              <div />
               {!editing && (
                 <Button onClick={() => setEditing(true)}>編輯資料</Button>
               )}

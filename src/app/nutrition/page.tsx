@@ -6,6 +6,7 @@ import { tokenUtils, NutritionRecord } from '@/lib/api';
 import NutritionForm from '@/components/NutritionForm';
 import NutritionList from '@/components/NutritionList';
 import LocalModeNotice from '@/components/LocalModeNotice';
+import AppBackBar from '@/components/AppBackBar';
 
 type ViewMode = 'list' | 'add' | 'edit';
 
@@ -70,17 +71,7 @@ export default function NutritionPage() {
         
         {(viewMode === 'add' || viewMode === 'edit') && (
           <div className="max-w-4xl mx-auto p-4">
-            <div className="mb-6">
-              <button
-                onClick={handleCancel}
-                className="inline-flex items-center text-gray-600 hover:text-gray-800 transition-colors"
-              >
-                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                </svg>
-                返回列表
-              </button>
-            </div>
+            <AppBackBar onBack={handleCancel} />
             
             <NutritionForm
               onSuccess={handleFormSuccess}

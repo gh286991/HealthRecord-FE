@@ -83,9 +83,9 @@ export default function NutritionList({ onAddNew, onEdit }: NutritionListProps) 
 
   return (
     <div className="max-w-6xl mx-auto p-4">
-      {/* 標題和新增按鈕 */}
+      {/* 頁面標題改由 Nav 呈現，這裡保留新增按鈕 */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
-        <h1 className="text-3xl font-bold text-gray-900 mb-4 sm:mb-0">飲食紀錄</h1>
+        <div className="h-2" />
         {onAddNew && (
           <button
             onClick={onAddNew}

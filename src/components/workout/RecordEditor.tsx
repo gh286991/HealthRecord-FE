@@ -1,6 +1,7 @@
 'use client';
 
 import BottomSheet from '@/components/BottomSheet';
+import SwipeRow from '@/components/SwipeRow';
 import { WorkoutExercise } from '@/lib/workoutApi';
 import { useGetBodyPartsQuery, useGetCommonExercisesQuery } from '@/lib/workoutApi';
 import { useMemo, useState } from 'react';
@@ -24,12 +25,12 @@ export default function RecordEditor({ date, setDate, exercises, setExercises }:
     setExercises((prev) => prev.map((ex, i) => i === idx ? { ...ex, bodyPart: bp } : ex));
   };
   const addSet = (exIdx: number) => {
-    setExercises((prev) => prev.map((ex, i) => i === exIdx ? { ...ex, sets: [...ex.sets, { weight: 0, reps: 8 }] } : ex));
+    setExercises((prev) => prev.map((ex, i) => i === exIdx ? { ...ex, sets: [...ex.sets, { weight: 0, reps: 8, completed: false }] } : ex));
   };
   const removeSet = (exIdx: number, setIdx: number) => {
     setExercises((prev) => prev.map((ex, i) => i === exIdx ? { ...ex, sets: ex.sets.filter((_, s) => s !== setIdx) } : ex));
   };
-  const updateSet = (exIdx: number, setIdx: number, field: 'weight' | 'reps', value: number) => {
+  const updateSet = (exIdx: number, setIdx: number, field: 'weight' | 'reps' | 'completed', value: number | boolean) => {
     setExercises((prev) => prev.map((ex, i) => {
       if (i !== exIdx) return ex;
       const sets = ex.sets.map((s, sIdx) => sIdx === setIdx ? { ...s, [field]: value } : s);
@@ -65,19 +66,29 @@ export default function RecordEditor({ date, setDate, exercises, setExercises }:
 
             <div className="space-y-2">
               {ex.sets.map((s, sIdx) => (
-                <div key={sIdx} className="flex items-center gap-3 w-full">
-                  <div className="flex-1">
-                    <label className="sr-only">重量(kg)</label>
-                    <input type="number" value={s.weight} onChange={(e) => updateSet(idx, sIdx, 'weight', Number(e.target.value))} className="w-full px-3 h-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-gray-900" />
+                <SwipeRow key={sIdx} onDelete={() => removeSet(idx, sIdx)} className="rounded-lg">
+                  <div className="flex items-center gap-3 w-full p-2">
+                    <button
+                      type="button"
+                      onClick={() => updateSet(idx, sIdx, 'completed', !s.completed)}
+                      className={`h-8 w-8 shrink-0 rounded-md border-2 transition-colors flex items-center justify-center ${s.completed ? 'bg-emerald-500 border-emerald-600 text-white' : 'bg-white border-gray-300 text-gray-400'}`}
+                      aria-label="標記完成"
+                      title="標記完成"
+                    >
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                      </svg>
+                    </button>
+                    <div className="flex items-center gap-2 flex-1">
+                      <label className="sr-only">重量(kg)</label>
+                      <input type="number" value={s.weight} onChange={(e) => updateSet(idx, sIdx, 'weight', Number(e.target.value))} className="h-10 w-24 px-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-green-500 focus:border-transparent text-gray-900" />
+                      <span className="text-gray-600">kg</span>
+                      <label className="sr-only">次數</label>
+                      <input type="number" min={1} value={s.reps} onChange={(e) => updateSet(idx, sIdx, 'reps', Math.max(1, Number(e.target.value)))} className="h-10 w-20 px-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-green-500 focus:border-transparent text-gray-900" />
+                      <span className="text-gray-600">次</span>
+                    </div>
                   </div>
-                  <div className="flex-1">
-                    <label className="sr-only">次數</label>
-                    <input type="number" min={1} value={s.reps} onChange={(e) => updateSet(idx, sIdx, 'reps', Math.max(1, Number(e.target.value)))} className="w-full px-3 h-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-gray-900" />
-                  </div>
-                  <div className="w-14 flex items-center">
-                    <button type="button" onClick={() => removeSet(idx, sIdx)} className="inline-flex items-center justify-center h-12 w-14 rounded-md bg-red-500 hover:bg-red-600 text-white transition">刪除</button>
-                  </div>
-                </div>
+                </SwipeRow>
               ))}
               <div className="mt-3 flex">
                 <button type="button" onClick={() => addSet(idx)} className="ml-auto px-3 py-2 rounded-md bg-emerald-500 hover:bg-emerald-600 text-white transition">+ 新增一組</button>

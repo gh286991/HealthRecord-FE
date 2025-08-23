@@ -10,6 +10,7 @@ export interface WorkoutSet {
   reps: number;
   restSeconds?: number;
   rpe?: number;
+  completed?: boolean;
 }
 
 export interface WorkoutExercise {

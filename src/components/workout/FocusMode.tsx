@@ -1,7 +1,9 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import IOSNumericKeypad from '@/components/ios/IOSNumericKeypad';
 import { WorkoutExercise, useGetCommonExercisesQuery } from '@/lib/workoutApi';
+import { useWorkoutTimer } from '@/components/WorkoutTimerContext';
 import IOSDualWheelPicker from '@/components/ios/IOSDualWheelPicker';
 
 interface FocusModeProps {
@@ -12,9 +14,10 @@ interface FocusModeProps {
   bodyParts?: string[];
   onToast: (msg: string) => void;
   onSessionMsChange: (ms: number) => void;
+  onTickMs?: (ms: number) => void;
 }
 
-export default function FocusMode({ open, onClose, exercises, setExercises, bodyParts, onToast, onSessionMsChange }: FocusModeProps) {
+export default function FocusMode({ open, onClose, exercises, setExercises, bodyParts, onToast, onSessionMsChange, onTickMs }: FocusModeProps) {
   const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0);
   const [currentSetIndex, setCurrentSetIndex] = useState(0);
   const [sessionMs, setSessionMs] = useState(0);
@@ -24,16 +27,15 @@ export default function FocusMode({ open, onClose, exercises, setExercises, body
   const [pendingRest, setPendingRest] = useState<{ exIdx: number; setIdx: number } | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const { data: focusCommonExercises } = useGetCommonExercisesQuery(undefined);
+  const { setRunning: setGlobalRunning, setTotalSeconds: setGlobalSeconds } = useWorkoutTimer();
 
   useEffect(() => {
     if (!open) return;
     setSessionRunning(true);
+    setGlobalRunning(true);
   }, [open]);
 
-  // 同步訓練碼錶到父層
-  useEffect(() => {
-    onSessionMsChange(sessionMs);
-  }, [sessionMs, onSessionMsChange]);
+  // 移除：不要每秒同步到父層，避免干擾外層碼錶
 
   // 訓練碼錶
   useEffect(() => {
@@ -41,6 +43,13 @@ export default function FocusMode({ open, onClose, exercises, setExercises, body
     const id = window.setInterval(() => setSessionMs((ms) => ms + 1000), 1000) as unknown as number;
     return () => window.clearInterval(id);
   }, [sessionRunning, open]);
+
+  // 將目前毫秒回傳給父層做顯示（不影響父層碼錶）
+  useEffect(() => {
+    if (!open) return;
+    if (onTickMs) onTickMs(sessionMs);
+    setGlobalSeconds(Math.floor(sessionMs / 1000));
+  }, [sessionMs, open, onTickMs]);
 
   // 休息累加
   useEffect(() => {
@@ -78,6 +87,32 @@ export default function FocusMode({ open, onClose, exercises, setExercises, body
       const sets = ex.sets.map((s, sI) => sI === setIdx ? { ...s, [field]: value } : s);
       return { ...ex, sets };
     }));
+  };
+
+  // 手機偵測
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    try {
+      const mq = window.matchMedia('(max-width: 640px)');
+      const set = () => setIsMobile(mq.matches);
+      set();
+      mq.addEventListener('change', set);
+      return () => mq.removeEventListener('change', set);
+    } catch {}
+  }, []);
+
+  // 自訂數字鍵盤
+  const [numPadOpen, setNumPadOpen] = useState(false);
+  const [numPadTitle, setNumPadTitle] = useState<string>('');
+  const [numPadInitial, setNumPadInitial] = useState<number | string>('');
+  const [numPadAllowDecimal, setNumPadAllowDecimal] = useState<boolean>(false);
+  const [numPadTarget, setNumPadTarget] = useState<{ exIdx: number; setIdx: number; field: 'weight' | 'reps' } | null>(null);
+  const openNumPad = (params: { exIdx: number; setIdx: number; field: 'weight' | 'reps'; title: string; initial: number | string; allowDecimal: boolean; }) => {
+    setNumPadTarget({ exIdx: params.exIdx, setIdx: params.setIdx, field: params.field });
+    setNumPadTitle(params.title);
+    setNumPadInitial(params.initial);
+    setNumPadAllowDecimal(params.allowDecimal);
+    setNumPadOpen(true);
   };
 
   const startRestFor = useCallback((exIdx: number, setIdx: number) => {
@@ -138,7 +173,7 @@ export default function FocusMode({ open, onClose, exercises, setExercises, body
     <div className="fixed inset-0 z-[60] flex flex-col bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white">
       <div className="flex items-center justify-between px-4 pt-4 pb-2">
         <button
-          onClick={() => { onClose(); setSessionRunning(false); }}
+          onClick={() => { onSessionMsChange(sessionMs); onClose(); setSessionRunning(false); setGlobalRunning(false); }}
           className="inline-flex items-center px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15"
         >
           <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -245,7 +280,12 @@ export default function FocusMode({ open, onClose, exercises, setExercises, body
                   <div className="grid grid-cols-2 gap-6">
                     <div className="text-center">
                       <div className="text-xs text-gray-400 mb-2">重量</div>
-                      <div className="text-2xl font-light text-white mb-3">{currentSet.weight} kg</div>
+                      <div
+                        className="text-2xl font-light text-white mb-3"
+                        onClick={() => openNumPad({ exIdx: currentExerciseIndex, setIdx: currentSetIndex, field: 'weight', title: '輸入重量 (kg)', initial: currentSet.weight || '', allowDecimal: true })}
+                      >
+                        {currentSet.weight} kg
+                      </div>
                       <div className="flex gap-2">
                         <button 
                           onClick={() => updateSet(currentExerciseIndex, currentSetIndex, 'weight', Math.max(0, (currentSet.weight || 0) - weightStep))}
@@ -263,7 +303,12 @@ export default function FocusMode({ open, onClose, exercises, setExercises, body
                     </div>
                     <div className="text-center">
                       <div className="text-xs text-gray-400 mb-2">次數</div>
-                      <div className="text-2xl font-light text-white mb-3">{currentSet.reps}</div>
+                      <div
+                        className="text-2xl font-light text-white mb-3"
+                        onClick={() => openNumPad({ exIdx: currentExerciseIndex, setIdx: currentSetIndex, field: 'reps', title: '輸入次數', initial: currentSet.reps || '', allowDecimal: false })}
+                      >
+                        {currentSet.reps}
+                      </div>
                       <div className="flex gap-2">
                         <button 
                           onClick={() => updateSet(currentExerciseIndex, currentSetIndex, 'reps', Math.max(1, (currentSet.reps || 1) - 1))}
@@ -342,6 +387,21 @@ export default function FocusMode({ open, onClose, exercises, setExercises, body
           </div>
         )}
       </div>
+      {/* 手機用自訂數字鍵盤 */}
+      <IOSNumericKeypad
+        open={numPadOpen}
+        onClose={() => setNumPadOpen(false)}
+        onConfirm={(val) => {
+          if (!numPadTarget) return;
+          const { exIdx, setIdx, field } = numPadTarget;
+          const next = field === 'reps' ? Math.max(1, Math.floor(val || 0)) : val;
+          updateSet(exIdx, setIdx, field, field === 'reps' ? next : Number(next));
+          setNumPadOpen(false);
+        }}
+        title={numPadTitle}
+        initialValue={numPadInitial}
+        allowDecimal={numPadAllowDecimal}
+      />
     </div>
   );
 }
