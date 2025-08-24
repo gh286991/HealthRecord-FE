@@ -59,7 +59,7 @@ export const workoutApi = createApi({
       return headers;
     },
   }),
-  tagTypes: ['WorkoutRecord', 'WorkoutSummary'],
+  tagTypes: ['WorkoutRecord', 'WorkoutSummary', 'Exercises'],
   endpoints: (builder) => ({
     getWorkoutList: builder.query<DailyWorkoutResponse, { date?: string } | void>({
       query: (params) => ({ url: '/workout-records', params: params as Record<string, unknown> | undefined }),
@@ -113,6 +113,26 @@ export const workoutApi = createApi({
     }),
     getCommonExercises: builder.query<Array<{ _id: string; name: string; bodyPart: string }>, string | void>({
       query: (bodyPart) => ({ url: '/workout-records/common/exercises', params: bodyPart ? { bodyPart } : undefined }),
+      providesTags: [{ type: 'Exercises', id: 'LIST' }],
+    }),
+    getAllExercises: builder.query<Array<{ _id: string; name: string; bodyPart: string }>, string | void>({
+      query: (bodyPart) => ({ url: '/workout-records/exercises', params: bodyPart ? { bodyPart } : undefined }),
+      providesTags: [{ type: 'Exercises', id: 'LIST' }],
+    }),
+    getUserExercises: builder.query<Array<{ _id: string; name: string; bodyPart: string }>, string | void>({
+      query: (bodyPart) => ({ url: '/workout-records/user/exercises', params: bodyPart ? { bodyPart } : undefined }),
+    }),
+    addUserExercise: builder.mutation<{ _id: string; name: string; bodyPart: string }, { name: string; bodyPart: string }>({
+      query: (body) => ({ url: '/workout-records/user/exercises', method: 'POST', body }),
+      invalidatesTags: [{ type: 'Exercises', id: 'LIST' }],
+    }),
+    updateUserExercise: builder.mutation<{ _id: string; name: string; bodyPart: string }, { id: string; body: Partial<{ name: string; bodyPart: string; isActive: boolean }> }>({
+      query: ({ id, body }) => ({ url: `/workout-records/user/exercises/${id}`, method: 'PATCH', body }),
+      invalidatesTags: [{ type: 'Exercises', id: 'LIST' }],
+    }),
+    deleteUserExercise: builder.mutation<{ message?: string }, string>({
+      query: (id) => ({ url: `/workout-records/user/exercises/${id}`, method: 'DELETE' }),
+      invalidatesTags: [{ type: 'Exercises', id: 'LIST' }],
     }),
   }),
 });
@@ -126,6 +146,11 @@ export const {
   useDeleteWorkoutMutation,
   useGetBodyPartsQuery,
   useGetCommonExercisesQuery,
+  useGetAllExercisesQuery,
+  useGetUserExercisesQuery,
+  useAddUserExerciseMutation,
+  useUpdateUserExerciseMutation,
+  useDeleteUserExerciseMutation,
 } = workoutApi;
 
 

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState, useCallback } from "react";
 
 type SwipeRowProps = {
   children: React.ReactNode;
@@ -26,20 +26,20 @@ export default function SwipeRow({
 
   const maxOffset = useMemo(() => -Math.abs(deleteWidth), [deleteWidth]);
 
-  const handleStart = (clientX: number) => {
+  const handleStart = useCallback((clientX: number) => {
     startXRef.current = clientX - currentXRef.current;
     isDraggingRef.current = true;
-  };
+  }, []);
 
-  const handleMove = (clientX: number) => {
+  const handleMove = useCallback((clientX: number) => {
     if (!isDraggingRef.current || startXRef.current === null) return;
     const delta = clientX - startXRef.current;
     const next = Math.min(0, Math.max(maxOffset - 24, delta));
     currentXRef.current = next;
     setOffset(next);
-  };
+  }, [maxOffset]);
 
-  const handleEnd = () => {
+  const handleEnd = useCallback(() => {
     if (!isDraggingRef.current) return;
     isDraggingRef.current = false;
     // snap logic
@@ -47,7 +47,7 @@ export default function SwipeRow({
     const finalOffset = shouldOpen ? maxOffset : 0;
     currentXRef.current = finalOffset;
     setOffset(finalOffset);
-  };
+  }, [maxOffset, offset]);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -77,7 +77,7 @@ export default function SwipeRow({
       window.removeEventListener("mousemove", onMouseMove);
       window.removeEventListener("mouseup", onMouseUp);
     };
-  }, [maxOffset, offset]);
+  }, [maxOffset, offset, handleStart, handleMove, handleEnd]);
 
   return (
     <div className={className} ref={containerRef} style={{ position: "relative", overflow: "hidden" }}>

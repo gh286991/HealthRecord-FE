@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 
 export interface WheelOption<T extends string | number = number> {
   label: string;
@@ -23,12 +23,12 @@ export default function WheelPicker<T extends string | number = number>({ value,
   const snapStopTimer = useRef<number | null>(null);
   const [mounted, setMounted] = useState(false);
 
-  const scrollToIndex = (index: number, behavior: ScrollBehavior) => {
+  const scrollToIndex = useCallback((index: number, behavior: ScrollBehavior) => {
     const el = containerRef.current;
     if (!el) return;
     const target = index * itemHeight;
     el.scrollTo({ top: target, behavior });
-  };
+  }, [itemHeight]);
 
   // 初次掛載：可選是否對齊
   useEffect(() => {
@@ -38,8 +38,7 @@ export default function WheelPicker<T extends string | number = number>({ value,
         scrollToIndex(selectedIndex, 'auto');
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [mounted, autoScrollOnMount, scrollToIndex, selectedIndex]);
 
   // 當 value/選項 變更後：若已掛載，可選是否對齊
   useEffect(() => {

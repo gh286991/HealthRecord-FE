@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -62,12 +62,7 @@ export default function NutritionForm({ onSuccess, onCancel, initialData }: Nutr
     name: 'foods',
   });
 
-  useEffect(() => {
-    fetchFoods();
-    fetchCategories();
-  }, [selectedCategory]);
-
-  const fetchFoods = async () => {
+  const fetchFoods = useCallback(async () => {
     try {
       const params = selectedCategory ? { category: selectedCategory, isActive: true } : { isActive: true };
       const foodList = await foodApi.getAll(params);
@@ -75,16 +70,21 @@ export default function NutritionForm({ onSuccess, onCancel, initialData }: Nutr
     } catch (error) {
       console.error('獲取食物列表失敗:', error);
     }
-  };
+  }, [selectedCategory]);
 
-  const fetchCategories = async () => {
+  const fetchCategories = useCallback(async () => {
     try {
       const categoryList = await foodApi.getCategories();
       setCategories(categoryList);
     } catch (error) {
       console.error('獲取食物分類失敗:', error);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchFoods();
+    fetchCategories();
+  }, [fetchFoods, fetchCategories]);
 
   // 處理圖片預覽
   const handlePhotoPreview = (file: File) => {

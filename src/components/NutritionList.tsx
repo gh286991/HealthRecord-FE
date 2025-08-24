@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import IOSDatePicker from './ios/IOSDatePicker';
 import { nutritionApi, NutritionRecord, DailyNutritionResponse } from '@/lib/api';
 import Image from 'next/image';
@@ -23,11 +23,7 @@ export default function NutritionList({ onAddNew, onEdit }: NutritionListProps) 
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [filterMealType, setFilterMealType] = useState<string>('all');
 
-  useEffect(() => {
-    fetchRecords();
-  }, [selectedDate]);
-
-  const fetchRecords = async () => {
+  const fetchRecords = useCallback(async () => {
     try {
       setLoading(true);
       console.log('🔍 開始獲取飲食紀錄，日期:', selectedDate);
@@ -41,7 +37,11 @@ export default function NutritionList({ onAddNew, onEdit }: NutritionListProps) 
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedDate]);
+
+  useEffect(() => {
+    fetchRecords();
+  }, [fetchRecords]);
 
   const handleDelete = async (id: string) => {
     if (!window.confirm('確定要刪除這筆飲食紀錄嗎？')) return;

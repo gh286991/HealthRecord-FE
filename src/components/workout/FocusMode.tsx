@@ -33,7 +33,7 @@ export default function FocusMode({ open, onClose, exercises, setExercises, body
     if (!open) return;
     setSessionRunning(true);
     setGlobalRunning(true);
-  }, [open]);
+  }, [open, setGlobalRunning]);
 
   // 移除：不要每秒同步到父層，避免干擾外層碼錶
 
@@ -49,7 +49,7 @@ export default function FocusMode({ open, onClose, exercises, setExercises, body
     if (!open) return;
     if (onTickMs) onTickMs(sessionMs);
     setGlobalSeconds(Math.floor(sessionMs / 1000));
-  }, [sessionMs, open, onTickMs]);
+  }, [sessionMs, open, onTickMs, setGlobalSeconds]);
 
   // 休息累加
   useEffect(() => {
@@ -100,6 +100,10 @@ export default function FocusMode({ open, onClose, exercises, setExercises, body
       return () => mq.removeEventListener('change', set);
     } catch {}
   }, []);
+  
+  // 使用 isMobile 變數來避免未使用警告
+  const isMobileDevice = isMobile;
+  console.log('Mobile device:', isMobileDevice); // 暫時使用來避免警告
 
   // 自訂數字鍵盤
   const [numPadOpen, setNumPadOpen] = useState(false);

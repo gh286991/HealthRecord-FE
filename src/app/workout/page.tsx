@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, useMemo, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, Suspense } from 'react';
 import { useStopwatch } from 'react-timer-hook';
 import { useRouter, useSearchParams } from 'next/navigation';
 import IOSDatePicker from '@/components/ios/IOSDatePicker';
@@ -10,16 +10,17 @@ import { tokenUtils } from '@/lib/api';
 import { WorkoutRecord, WorkoutExercise, useCreateWorkoutMutation, useGetWorkoutListQuery, useUpdateWorkoutMutation, useGetBodyPartsQuery, useGetCommonExercisesQuery, useDeleteWorkoutMutation } from '@/lib/workoutApi';
 import Button from '@/components/Button';
 import Card from '@/components/Card';
-import FocusMode from '@/components/workout/FocusMode';
-// import RecordEditor from '@/components/workout/RecordEditor';
 import Toast from '@/components/Toast';
 import SwipeRow from '@/components/SwipeRow';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import { useWorkoutTimer } from '@/components/WorkoutTimerContext';
+import IOSAlertModal from '@/components/ios/IOSAlertModal';
+import WorkoutSummaryModal from '@/components/workout/WorkoutSummaryModal';
+import QuickAddExercise from '@/components/workout/QuickAddExercise';
 
 type ViewMode = 'list' | 'add' | 'edit';
 
-export default function WorkoutPage() {
+function WorkoutPageContent() {
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [editingRecord, setEditingRecord] = useState<WorkoutRecord | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -35,6 +36,16 @@ export default function WorkoutPage() {
   const [toastVariant, setToastVariant] = useState<'default' | 'success' | 'error'>('default');
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [summaryOpen, setSummaryOpen] = useState(false);
+  const [summaryData, setSummaryData] = useState<null | {
+    date: string;
+    exercises: Array<{ name: string; sets: number; reps: number; volume: number }>;
+    totalVolume: number;
+    totalSets: number;
+    totalReps: number;
+    workoutDurationSeconds?: number;
+    totalRestSeconds?: number;
+  }>(null);
 
   useEffect(() => {
     const loggedIn = tokenUtils.isLoggedIn();
@@ -106,15 +117,43 @@ export default function WorkoutPage() {
         ? payload.totalRestSeconds
         : (payload.exercises || []).reduce((acc, ex) => acc + (ex.sets || []).reduce((s, set) => s + (set.restSeconds || 0), 0), 0);
       const bodyWithDurations = { ...payload, totalRestSeconds: ensuredTotalRestSeconds };
-      if (editingRecord) await updateWorkout({ id: editingRecord._id, body: bodyWithDurations }).unwrap();
-      else await createWorkout(bodyWithDurations).unwrap();
-      await fetchData();
-      setViewMode('list');
-      setEditingRecord(null);
-      try { router.push('/workout'); } catch { }
-      setToastVariant('success');
-      setToastMsg('已儲存健身紀錄');
-      setToastOpen(true);
+      if (editingRecord) {
+        await updateWorkout({ id: editingRecord._id, body: bodyWithDurations }).unwrap();
+        await fetchData();
+        setViewMode('list');
+        setEditingRecord(null);
+        try { router.push('/workout'); } catch { }
+        setToastVariant('success');
+        setToastMsg('已儲存健身紀錄');
+        setToastOpen(true);
+      } else {
+        await createWorkout(bodyWithDurations).unwrap();
+        await fetchData();
+        const perExercise = (payload.exercises || []).map(ex => {
+          const sets = ex.sets?.length || 0;
+          const reps = (ex.sets || []).reduce((s, set) => s + (set.reps || 0), 0);
+          const volume = (ex.sets || []).reduce((s, set) => s + (set.weight || 0) * (set.reps || 0), 0);
+          return { name: ex.exerciseName, sets, reps, volume };
+        });
+        const totals = perExercise.reduce((t, e) => ({
+          totalVolume: t.totalVolume + e.volume,
+          totalSets: t.totalSets + e.sets,
+          totalReps: t.totalReps + e.reps,
+        }), { totalVolume: 0, totalSets: 0, totalReps: 0 });
+        setSummaryData({
+          date: payload.date || new Date().toISOString(),
+          exercises: perExercise,
+          totalVolume: totals.totalVolume,
+          totalSets: totals.totalSets,
+          totalReps: totals.totalReps,
+          workoutDurationSeconds: payload.workoutDurationSeconds,
+          totalRestSeconds: ensuredTotalRestSeconds,
+        });
+        setSummaryOpen(true);
+        setToastVariant('success');
+        setToastMsg('已儲存健身紀錄');
+        setToastOpen(true);
+      }
     } catch (e) {
       console.error('儲存健身紀錄失敗', e);
       setToastVariant('error');
@@ -295,8 +334,33 @@ export default function WorkoutPage() {
         onConfirm={confirmDelete}
         onCancel={() => setConfirmOpen(false)}
       />
+      <WorkoutSummaryModal
+        open={summaryOpen}
+        data={summaryData}
+        encouragement={summaryOpen ? pickEncouragement() : undefined}
+        onClose={() => {
+          setSummaryOpen(false);
+          setViewMode('list');
+          setEditingRecord(null);
+          try { router.push('/workout'); } catch { }
+        }}
+      />
     </div>
   );
+}
+
+function pickEncouragement() {
+  const items = [
+    '太強了！持續累積就是勝利 💪',
+    '今天也有努力，身體會記得的 👏',
+    '穩穩推進，每一步都算數 🚀',
+    '好節奏！記得補充水分與睡眠 💤',
+  ];
+  try {
+    return items[Math.floor(Math.random() * items.length)];
+  } catch {
+    return items[0];
+  }
 }
 
 function WorkoutForm({ draftKey, initialData, onCancel, onSubmit }: {
@@ -311,6 +375,7 @@ function WorkoutForm({ draftKey, initialData, onCancel, onSubmit }: {
   const { data: bodyParts } = useGetBodyPartsQuery();
   const { data: commonExercises } = useGetCommonExercisesQuery(undefined); // 取得全部常用動作供雙欄輪盤使用
   const [dualOpen, setDualOpen] = useState(false);
+  const [quickOpen, setQuickOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
   // 手機偵測（小於等於 640px 視為手機）
@@ -340,22 +405,19 @@ function WorkoutForm({ draftKey, initialData, onCancel, onSubmit }: {
     setNumPadOpen(true);
   }, []);
 
-  // 專注模式與計時器狀態
-  const [focusMode, setFocusMode] = useState(false);
-  const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0);
-  const [currentSetIndex, setCurrentSetIndex] = useState(0);
-  const [restElapsed, setRestElapsed] = useState<number | null>(null);
-  const [restRunning, setRestRunning] = useState(false);
-  const [pendingRest, setPendingRest] = useState<{ exIdx: number; setIdx: number } | null>(null);
-  const weightStep = 2.5;
-  const [focusPickerOpen, setFocusPickerOpen] = useState(false);
-  const [focusPickerBodyPart, setFocusPickerBodyPart] = useState<string>('');
-  const { data: focusCommonExercises } = useGetCommonExercisesQuery(focusPickerBodyPart || undefined);
-  const [, setTimerOpen] = useState<boolean>(false);
   // 使用 react-timer-hook 取代手刻碼錶
   const trainWatch = useStopwatch({ autoStart: false });
   const restWatch = useStopwatch({ autoStart: false });
-  const { setTotalSeconds: setGlobalSeconds, setRunning: setGlobalRunning } = useWorkoutTimer();
+  const { setTotalSeconds: setGlobalSeconds, setRunning: setGlobalRunning, setRestSeconds: setGlobalRestSeconds, setRestRunning: setGlobalRestRunning } = useWorkoutTimer();
+
+  // 新增：每組訓練/休息狀態管理
+  const [currentRun, setCurrentRun] = useState<{ exIdx: number; setIdx: number; startMs: number } | null>(null);
+  const [lastCompleted, setLastCompleted] = useState<{ exIdx: number; setIdx: number } | null>(null);
+  const [lastRestStartMs, setLastRestStartMs] = useState<number | null>(null);
+  const [workSecondsMap, setWorkSecondsMap] = useState<Record<string, number>>({});
+  const [finishConfirmOpen, setFinishConfirmOpen] = useState(false);
+  const [startConfirmOpen, setStartConfirmOpen] = useState(false);
+  const [pendingStart, setPendingStart] = useState<{ exIdx: number; setIdx: number } | null>(null);
 
   const toastTimerRef = useRef<number | null>(null);
   const showToast = useCallback((message: string) => {
@@ -403,6 +465,44 @@ function WorkoutForm({ draftKey, initialData, onCancel, onSubmit }: {
     setGlobalRunning(trainWatch.isRunning);
   }, [trainWatch.isRunning, setGlobalRunning]);
 
+  // 同步休息碼錶到全域 Nav 顯示
+  useEffect(() => {
+    setGlobalRestSeconds(restWatch.totalSeconds);
+  }, [restWatch.totalSeconds, setGlobalRestSeconds]);
+
+  useEffect(() => {
+    setGlobalRestRunning(restWatch.isRunning);
+  }, [restWatch.isRunning, setGlobalRestRunning]);
+
+  // 監聽來自導覽列的計時器控制事件
+  useEffect(() => {
+    const handleToggleTraining = () => {
+      if (!trainWatch.isRunning) {
+        trainWatch.start();
+        setGlobalRunning(true);
+      } else {
+        trainWatch.pause();
+        setGlobalRunning(false);
+      }
+    };
+
+    const handleToggleRest = () => {
+      if (!restWatch.isRunning) {
+        restWatch.reset(undefined, true);
+      } else {
+        restWatch.pause();
+      }
+    };
+
+    window.addEventListener('toggleTrainingTimer', handleToggleTraining);
+    window.addEventListener('toggleRestTimer', handleToggleRest);
+
+    return () => {
+      window.removeEventListener('toggleTrainingTimer', handleToggleTraining);
+      window.removeEventListener('toggleRestTimer', handleToggleRest);
+    };
+  }, [trainWatch, restWatch, setGlobalRunning]);
+
   // 提醒離開頁面（有未儲存內容）
   useEffect(() => {
     const handler = (e: BeforeUnloadEvent) => {
@@ -432,7 +532,7 @@ function WorkoutForm({ draftKey, initialData, onCancel, onSubmit }: {
     showToast('已刪除一組');
   };
 
-  const updateSet = (exIdx: number, setIdx: number, field: 'weight' | 'reps' | 'completed', value: number | boolean) => {
+  const updateSet = (exIdx: number, setIdx: number, field: 'weight' | 'reps' | 'completed' | 'restSeconds', value: number | boolean) => {
     setExercises((prev) => prev.map((ex, i) => {
       if (i !== exIdx) return ex;
       const sets = ex.sets.map((s, sIdx) => sIdx === setIdx ? { ...s, [field]: value } : s);
@@ -442,215 +542,71 @@ function WorkoutForm({ draftKey, initialData, onCancel, onSubmit }: {
 
   const totalVolume = exercises.reduce((sum, ex) => sum + ex.sets.reduce((s, set) => s + (set.weight || 0) * (set.reps || 0), 0), 0);
 
-  // 簡短時間列：總時間 / 運動 / 休息
-  const shortStats = useMemo(() => {
-    const totalSec = trainWatch.totalSeconds;
-    const restSec = Math.max(0, exercises.reduce((acc, ex) => acc + ex.sets.reduce((a, set) => a + (set.restSeconds || 0), 0), 0) + (restElapsed ?? 0));
-    const trainSec = Math.max(0, totalSec - restSec);
-    const fmt = (sec: number) => {
-      const m = Math.floor(sec / 60).toString().padStart(2, '0');
-      const s = Math.floor(sec % 60).toString().padStart(2, '0');
-      return `${m}:${s}`;
-    };
-    return { total: fmt(totalSec), rest: fmt(restSec), train: fmt(trainSec) };
-  }, [trainWatch.totalSeconds, exercises, restElapsed]);
-
-  // 移除本地 sessionMs 狀態，直接以 trainWatch 為準
-
-  // 同步休息碼錶秒數到 restElapsed
-  useEffect(() => {
-    if (!restRunning) return;
-    setRestElapsed(restWatch.totalSeconds);
-  }, [restRunning, restWatch.totalSeconds]);
-
-
-
-  const formatTime = useCallback((ms: number) => {
-    const totalSec = Math.floor(ms / 1000);
-    const h = Math.floor(totalSec / 3600).toString().padStart(2, '0');
-    const m = Math.floor((totalSec % 3600) / 60).toString().padStart(2, '0');
-    const s = Math.floor(totalSec % 60).toString().padStart(2, '0');
-    return h !== '00' ? `${h}:${m}:${s}` : `${m}:${s}`;
-  }, []);
-
   const formatSec = useCallback((sec: number | null) => {
-    if (sec === null) return '--:--';
+    if (sec === null || sec === 0) return '--:--';
     const m = Math.floor(sec / 60).toString().padStart(2, '0');
     const s = Math.floor(sec % 60).toString().padStart(2, '0');
     return `${m}:${s}`;
   }, []);
 
-  const canAdvance = exercises.length > 0;
-
-  const advanceToNextSet = useCallback(() => {
-    setPendingRest(null);
-    setRestRunning(false);
-    setRestElapsed(null);
-    setCurrentSetIndex((prevSetIdx) => {
-      const ex = exercises[currentExerciseIndex];
-      if (!ex) return 0;
-      const isLastSet = prevSetIdx >= ex.sets.length - 1;
-      if (!isLastSet) return prevSetIdx + 1;
-      // 進入下一個動作
-      setCurrentExerciseIndex((prevExIdx) => {
-        const isLastExercise = prevExIdx >= exercises.length - 1;
-        if (!isLastExercise) return prevExIdx + 1;
-        // 所有完成
-        showToast('恭喜完成所有訓練！');
-        return prevExIdx;
-      });
-      return 0;
-    });
-  }, [currentExerciseIndex, exercises, showToast]);
-
-  const startRestFor = useCallback((exIdx: number, setIdx: number) => {
-    setPendingRest({ exIdx, setIdx });
-    restWatch.reset(undefined, true);
-    setRestElapsed(0);
-    setRestRunning(true);
-  }, [restWatch]);
-
-  const finishRestAndAdvance = useCallback(() => {
-    const spent = restWatch.totalSeconds || 0;
-    if (pendingRest) {
-      setExercises((prev) => prev.map((ex, i) => {
-        if (i !== pendingRest.exIdx) return ex;
-        const sets = ex.sets.map((s, sIdx) => sIdx === pendingRest.setIdx ? { ...s, restSeconds: spent } : s);
-        return { ...ex, sets };
-      }));
+  const startSet = useCallback((exIdx: number, setIdx: number) => {
+    // 結束上一段休息並寫入上一個完成組的 restSeconds
+    if (lastRestStartMs && lastCompleted) {
+      const restSec = Math.floor((Date.now() - lastRestStartMs) / 1000);
+      updateSet(lastCompleted.exIdx, lastCompleted.setIdx, 'restSeconds', restSec);
+      setLastRestStartMs(null);
+      restWatch.pause();
+      setGlobalRestRunning(false);
     }
-    // 專注模式：直接新增下一組並將游標移到新組
-    setExercises((prev) => prev.map((ex, i) => {
-      if (i !== (pendingRest?.exIdx ?? currentExerciseIndex)) return ex;
-      const baseIdx = pendingRest?.setIdx ?? currentSetIndex;
-      const last = ex.sets[baseIdx] || ex.sets[ex.sets.length - 1];
-      const newSet = { weight: last?.weight ?? 0, reps: last?.reps ?? 8 };
-      return { ...ex, sets: [...ex.sets, newSet] };
-    }));
-    restWatch.pause();
-    restWatch.reset(undefined, false);
-    setRestRunning(false);
-    setRestElapsed(null);
-    setPendingRest(null);
-    setCurrentSetIndex(() => {
-      const ex = exercises[(pendingRest?.exIdx ?? currentExerciseIndex)];
-      const length = (ex?.sets?.length ?? 0) + 1;
-      return Math.max(0, length - 1);
-    });
-  }, [currentExerciseIndex, currentSetIndex, exercises, pendingRest, restWatch, setExercises]);
+    // 開始本組訓練
+    setCurrentRun({ exIdx, setIdx, startMs: Date.now() });
+    trainWatch.start();
+    setGlobalRunning(true);
+  }, [lastRestStartMs, lastCompleted, restWatch, setGlobalRestRunning, trainWatch, setGlobalRunning]);
 
-  // 休息結束由使用者主動結束（累加計時，不自動前進）
+  const toggleComplete = useCallback((exIdx: number, setIdx: number) => {
+    const already = !!exercises[exIdx]?.sets[setIdx]?.completed;
+    const nextVal = !already;
+    updateSet(exIdx, setIdx, 'completed', nextVal);
 
-  const completeCurrentSet = useCallback(() => {
-    if (!canAdvance) return;
-    startRestFor(currentExerciseIndex, currentSetIndex);
-  }, [canAdvance, currentExerciseIndex, currentSetIndex, startRestFor]);
+    const key = `${exIdx}-${setIdx}`;
 
-  const skipRestAndAdvance = useCallback(() => {
-    // 記錄 0 秒休息，新增下一組並前進
-    if (pendingRest) {
-      setExercises((prev) => prev.map((ex, i) => {
-        if (i !== pendingRest.exIdx) return ex;
-        const setsWithRest = ex.sets.map((s, sIdx) => sIdx === pendingRest.setIdx ? { ...s, restSeconds: 0 } : s);
-        const last = setsWithRest[pendingRest.setIdx] || setsWithRest[setsWithRest.length - 1];
-        const newSet = { weight: last?.weight ?? 0, reps: last?.reps ?? 8 };
-        return { ...ex, sets: [...setsWithRest, newSet] };
-      }));
-      setCurrentSetIndex(() => {
-        const ex = exercises[pendingRest.exIdx];
-        const length = (ex?.sets?.length ?? 0) + 1;
-        return Math.max(0, length - 1);
-      });
+    if (nextVal) {
+      // 完成當前組：若正在訓練，記錄該組運動時間，並開始休息
+      if (currentRun && currentRun.exIdx === exIdx && currentRun.setIdx === setIdx) {
+        const workSec = Math.floor((Date.now() - currentRun.startMs) / 1000);
+        setWorkSecondsMap((m) => ({ ...m, [key]: workSec }));
+        setCurrentRun(null);
+      }
+      // 開始休息
+      trainWatch.pause();
+      setGlobalRunning(false);
+      setLastCompleted({ exIdx, setIdx });
+      setLastRestStartMs(Date.now());
+      restWatch.reset(undefined, true);
+      setGlobalRestRunning(true);
     } else {
-      setExercises((prev) => prev.map((ex, i) => {
-        if (i !== currentExerciseIndex) return ex;
-        const last = ex.sets[currentSetIndex] || ex.sets[ex.sets.length - 1];
-        const newSet = { weight: last?.weight ?? 0, reps: last?.reps ?? 8 };
-        return { ...ex, sets: [...ex.sets, newSet] };
-      }));
-      setCurrentSetIndex(() => {
-        const ex = exercises[currentExerciseIndex];
-        const length = (ex?.sets?.length ?? 0) + 1;
-        return Math.max(0, length - 1);
+      // 取消完成：清掉暫存運動時間
+      setWorkSecondsMap((m) => {
+        const clone = { ...m };
+        delete clone[key];
+        return clone;
       });
     }
-    setPendingRest(null);
-    setRestRunning(false);
-    setRestElapsed(null);
-  }, [currentExerciseIndex, currentSetIndex, exercises, pendingRest, setExercises]);
-
-  const currentExercise = useMemo(() => exercises[currentExerciseIndex], [exercises, currentExerciseIndex]);
-  const currentSet = useMemo(() => currentExercise?.sets?.[currentSetIndex], [currentExercise, currentSetIndex]);
+  }, [exercises, currentRun, trainWatch, setGlobalRunning, restWatch, setGlobalRestRunning]);
 
   return (
     <div className="bg-white rounded-2xl shadow-xl p-6">
-      {false && (
-        <div className="fixed top-16 right-6 z-50 w-[min(92vw,360px)] bg-white rounded-xl shadow-2xl border border-gray-200 p-4">
-          <div className="flex items-center justify-between mb-3">
-            <div className="text-sm text-gray-500">訓練時間</div>
-            <button onClick={() => setTimerOpen(false)} className="text-gray-400 hover:text-gray-600">✕</button>
-          </div>
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2"><span className="text-xs text-gray-500">總</span><span className="font-semibold tabular-nums">{shortStats.total}</span></div>
-            <div className="flex items-center gap-2"><span className="text-xs text-gray-500">運</span><span className="text-teal-700 tabular-nums">{shortStats.train}</span></div>
-            <div className="flex items-center gap-2"><span className="text-xs text-gray-500">休</span><span className="text-rose-700 tabular-nums">{shortStats.rest}</span></div>
-          </div>
-          <div className="flex items-center justify-end gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                if (trainWatch.isRunning) {
-                  trainWatch.pause();
-                } else {
-                  trainWatch.start();
-                }
-              }}
-              className={`px-3 py-1.5 rounded-lg text-white text-sm ${trainWatch.isRunning ? 'bg-red-500 hover:bg-red-600' : 'bg-emerald-500 hover:bg-emerald-600'}`}
-            >
-              {trainWatch.isRunning ? '暫停' : '開始'}
-            </button>
-            {restElapsed === null ? (
-              <button type="button" onClick={() => { restWatch.reset(undefined, true); setRestElapsed(0); setRestRunning(true); }} className="px-3 py-1.5 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white text-sm">開始休息</button>
-            ) : (
-              <button type="button" onClick={() => { restWatch.pause(); restWatch.reset(undefined, false); setRestRunning(false); setRestElapsed(null); }} className="px-3 py-1.5 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white text-sm">結束休息</button>
-            )}
-            <button type="button" onClick={() => {
-              trainWatch.reset(undefined, false);
-              restWatch.pause();
-              restWatch.reset(undefined, false);
-              setRestElapsed(null);
-              setRestRunning(false);
-            }} className="px-3 py-1.5 rounded-lg bg-gray-200 hover:bg-gray-300 text-gray-800 text-sm">重置</button>
-          </div>
-        </div>
-      )}
 
       <div className="space-y-6">
+        
+        {/* 記錄日期 */}
         <div>
           <div className="flex items-center gap-3 mb-2">
             <label className="block text-sm font-medium text-gray-700">記錄日期</label>
             <div className="flex-1 px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-900">
               {new Date(date).toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' })}
             </div>
-            {!trainWatch.isRunning ? (
-              <button
-                type="button"
-                onClick={() => {
-                  console.log('開始訓練按鈕被點擊');
-                  trainWatch.start();
-                  setTimerOpen(true);
-                  console.log('設置 sessionRunning = true');
-                  setGlobalRunning(true);
-                }}
-                className="px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-sm whitespace-nowrap"
-              >
-                開始訓練
-              </button>
-            ) : (
-              <div className="text-xs text-gray-500 whitespace-nowrap">
-                計時中 {formatSec(trainWatch.totalSeconds)}
-              </div>
-            )}
           </div>
         </div>
 
@@ -680,8 +636,15 @@ function WorkoutForm({ draftKey, initialData, onCancel, onSubmit }: {
                     <div className="flex items-center gap-3 w-full p-2">
                       <button
                         type="button"
-                        onClick={() => updateSet(idx, sIdx, 'completed', !s.completed)}
-                        className={`h-8 w-8 shrink-0 rounded-md border-2 transition-colors flex items-center justify-center ${s.completed ? 'bg-emerald-500 border-emerald-600 text-white' : 'bg-white border-gray-300 text-gray-400'}`}
+                        onClick={() => toggleComplete(idx, sIdx)}
+                        disabled={!!currentRun && !(currentRun.exIdx === idx && currentRun.setIdx === sIdx)}
+                        aria-disabled={!!currentRun && !(currentRun.exIdx === idx && currentRun.setIdx === sIdx)}
+                        className={`h-8 w-8 shrink-0 rounded-md border-2 transition-colors flex items-center justify-center
+                          ${s.completed ? 'bg-emerald-500 border-emerald-600 text-white' :
+                            (currentRun && currentRun.exIdx === idx && currentRun.setIdx === sIdx)
+                              ? 'bg-emerald-50 border-emerald-500 text-emerald-600 ring-2 ring-emerald-200'
+                              : 'bg-white border-gray-300 text-gray-400'}
+                          ${!!currentRun && !(currentRun.exIdx === idx && currentRun.setIdx === sIdx) ? 'opacity-50 cursor-not-allowed' : ''}`}
                         aria-label="標記完成"
                         title="標記完成"
                       >
@@ -734,6 +697,26 @@ function WorkoutForm({ draftKey, initialData, onCancel, onSubmit }: {
                         />
                         <span className="text-gray-600">次</span>
                       </div>
+
+                      {/* 組間/本組控制 */}
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setPendingStart({ exIdx: idx, setIdx: sIdx });
+                            setStartConfirmOpen(true);
+                          }}
+                          className="px-2 py-1 rounded text-xs font-medium bg-emerald-100 hover:bg-emerald-200 text-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          title="開始本組"
+                          disabled={!!currentRun || !!s.completed}
+                        >
+                          開始
+                        </button>
+                        {workSecondsMap[`${idx}-${sIdx}`] !== undefined && workSecondsMap[`${idx}-${sIdx}`] > 0 && (
+                          <span className="text-xs text-gray-500">本組運動 {formatSec(workSecondsMap[`${idx}-${sIdx}`])}</span>
+                        )}
+                      </div>
+                      {/* 休息時間會在完成到下一次開始之間自動累計，不提供手動按鈕 */}
                     </div>
                   </SwipeRow>
                 ))}
@@ -760,6 +743,16 @@ function WorkoutForm({ draftKey, initialData, onCancel, onSubmit }: {
             >
               + 動作
             </button>
+          <div className="mt-2 grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => setQuickOpen(true)}
+              className="w-full py-2 rounded-lg bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium transition-colors"
+            >
+              + 自訂動作
+            </button>
+          </div>
+          {/* 專注模式按鈕 - 暫時隱藏，未來重新設計後啟用
           <div className="mt-2 flex gap-2">
             <button
               type="button"
@@ -782,6 +775,7 @@ function WorkoutForm({ draftKey, initialData, onCancel, onSubmit }: {
               🎯 專注
             </button>
           </div>
+          */}
 
           {/* 新的雙欄輪盤 */}
           <IOSDualWheelPicker
@@ -794,6 +788,16 @@ function WorkoutForm({ draftKey, initialData, onCancel, onSubmit }: {
               setExercises((prev) => [...prev, { exerciseName: ex.name, bodyPart: ex.bodyPart, exerciseId: ex._id, sets: [{ weight: 0, reps: 8 }] }]);
               setDualOpen(false);
               showToast(`已加入：${ex.name}`);
+              try { document.getElementById('exercise-bottom')?.scrollIntoView({ behavior: 'smooth' }); } catch { }
+            }}
+          />
+          <QuickAddExercise
+            open={quickOpen}
+            onClose={() => setQuickOpen(false)}
+            onAdded={(ex) => {
+              setExercises((prev) => [...prev, { exerciseName: ex.name, bodyPart: ex.bodyPart, exerciseId: ex._id, sets: [{ weight: 0, reps: 8 }] }]);
+              setQuickOpen(false);
+              showToast(`已加入自訂：${ex.name}`);
               try { document.getElementById('exercise-bottom')?.scrollIntoView({ behavior: 'smooth' }); } catch { }
             }}
           />
@@ -813,10 +817,14 @@ function WorkoutForm({ draftKey, initialData, onCancel, onSubmit }: {
           <button onClick={onCancel} className="flex-1 py-3 px-4 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors active:scale-95">取消</button>
           <button
             onClick={() => {
-              // 前端驗證：必須有 exerciseId，且 reps >= 1
               const invalid = exercises.some(ex => !ex.exerciseId || ex.sets.some(s => !s.reps || s.reps < 1));
               if (invalid) {
                 alert('請從常用動作選擇項目，並確保每組次數至少為 1');
+                return;
+              }
+              const hasStarted = !!trainWatch.totalSeconds || !!currentRun || Object.keys(workSecondsMap).length > 0;
+              if (!initialData && hasStarted) {
+                setFinishConfirmOpen(true);
                 return;
               }
               onSubmit({ date, exercises, notes, workoutDurationSeconds: trainWatch.totalSeconds });
@@ -824,7 +832,7 @@ function WorkoutForm({ draftKey, initialData, onCancel, onSubmit }: {
             }}
             className="flex-1 py-3 px-4 bg-gradient-to-r from-green-500 to-blue-600 text-white font-medium rounded-lg hover:from-green-600 hover:to-blue-700 transition-all duration-200 active:scale-95"
           >
-            {initialData ? '儲存變更' : '新增紀錄'}
+            {initialData ? '儲存變更' : (!!trainWatch.totalSeconds || !!currentRun || Object.keys(workSecondsMap).length > 0 ? '完成運動' : '新增紀錄')}
           </button>
         </div>
       </div>
@@ -849,230 +857,58 @@ function WorkoutForm({ draftKey, initialData, onCancel, onSubmit }: {
         initialValue={numPadInitial}
         allowDecimal={numPadAllowDecimal}
       />
-
-      {/* 專注模式疊層 */}
-      <FocusMode
-        open={focusMode}
-        onClose={() => {
-          setFocusMode(false);
-          trainWatch.pause();
+      {/* 完成確認 iOS 風格 */}
+      <IOSAlertModal
+        open={finishConfirmOpen}
+        title="完成訓練？"
+        message={"是否要完成並送出本次訓練紀錄？\n送出後將顯示統計摘要。"}
+        cancelText="再確認一下"
+        confirmText="完成並送出"
+        onCancel={() => setFinishConfirmOpen(false)}
+        onConfirm={() => {
+          setFinishConfirmOpen(false);
+          try { trainWatch.pause(); } catch {}
+          try {
+            let totalRest = (exercises || []).reduce((acc, ex) => acc + (ex.sets || []).reduce((s, set) => s + (set.restSeconds || 0), 0), 0);
+            if (lastRestStartMs && lastCompleted) {
+              const extra = Math.max(0, Math.floor((Date.now() - lastRestStartMs) / 1000));
+              totalRest += extra;
+            }
+            onSubmit({ date, exercises, notes, workoutDurationSeconds: trainWatch.totalSeconds, totalRestSeconds: totalRest });
+          } catch {}
+          try { window.localStorage.removeItem(draftKey); } catch { }
         }}
-        exercises={exercises}
-        setExercises={setExercises}
-        bodyParts={bodyParts}
-        onToast={showToast}
-        onSessionMsChange={(ms) => { try { trainWatch.reset(new Date(Date.now() - ms), trainWatch.isRunning); } catch { } }}
-        onTickMs={() => { }}
       />
-      {false && (
-        <div className="fixed inset-0 z-[60] flex flex-col bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white">
-          <div className="flex items-center justify-between px-4 pt-4 pb-2">
-            <button
-              onClick={() => {
-                setFocusMode(false);
-                trainWatch.pause();
-              }}
-              className="inline-flex items-center px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15"
-            >
-              <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-              關閉
-            </button>
-            <div className="text-sm opacity-80">訓練時間</div>
-            <div className="text-lg font-semibold tabular-nums">{formatTime(trainWatch.totalSeconds * 1000)}</div>
-          </div>
 
-          <div className="flex-1 px-6 py-4 overflow-y-auto">
-            {currentExercise ? (
-              <div className="max-w-xl mx-auto">
-                <div className="mb-6">
-                  <div className="text-xs uppercase tracking-widest text-gray-400">現在訓練</div>
-                  <div className="text-2xl font-bold">{currentExercise.exerciseName}</div>
-                  <div className="text-sm text-gray-300">第 {currentSetIndex + 1} 組 / 共 {currentExercise.sets.length} 組</div>
-                </div>
-                {/* 專注模式：快速切換/新增動作 */}
-                <div className="mb-4">
-                  <button
-                    className="px-3 py-2 rounded-lg bg-white/10 hover:bg-white/15 text-sm"
-                    onClick={() => setFocusPickerOpen((v) => !v)}
-                  >
-                    切換/新增動作
-                  </button>
-                  {focusPickerOpen && (
-                    <div className="mt-3 rounded-xl border border-white/10 bg-white/5 p-3">
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                        <div>
-                          <label className="block text-xs text-gray-400 mb-1">選擇部位</label>
-                          <select
-                            value={focusPickerBodyPart}
-                            onChange={(e) => setFocusPickerBodyPart(e.target.value)}
-                            className="w-full px-3 py-2 rounded-lg bg-white/10 border border-white/10 text-white"
-                          >
-                            <option value="">全部</option>
-                            {(bodyParts || []).map((bp) => (
-                              <option key={bp} value={bp}>{bp}</option>
-                            ))}
-                          </select>
-                        </div>
-                        <div className="md:col-span-2">
-                          <label className="block text-xs text-gray-400 mb-1">常用動作</label>
-                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-48 overflow-auto pr-1">
-                            {(focusCommonExercises || []).map((ex) => (
-                              <button
-                                key={ex._id}
-                                onClick={() => {
-                                  // 新增到清單並切換到該動作第一組
-                                  setExercises((prev) => [...prev, { exerciseName: ex.name, bodyPart: ex.bodyPart, exerciseId: ex._id, sets: [{ weight: 0, reps: 8 }] }]);
-                                  setCurrentExerciseIndex(exercises.length);
-                                  setCurrentSetIndex(0);
-                                  setFocusPickerOpen(false);
-                                  showToast(`已加入：${ex.name}`);
-                                }}
-                                className="px-3 py-2 rounded bg-white/10 hover:bg-white/15 text-left text-sm"
-                              >
-                                {ex.name}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-                {currentSet && (
-                  <div className="grid grid-cols-2 gap-4 mb-6">
-                    <div>
-                      <label className="block text-xs text-gray-400 mb-1">重量 (kg)</label>
-                      <input
-                        type="number"
-                        value={currentSet.weight || ''}
-                        onChange={(e) => updateSet(currentExerciseIndex, currentSetIndex, 'weight', Number(e.target.value))}
-                        className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/10 focus:outline-none focus:ring-2 focus:ring-indigo-400 text-white"
-                      />
-                      <div className="mt-2 grid grid-cols-3 gap-2">
-                        <button onClick={() => updateSet(currentExerciseIndex, currentSetIndex, 'weight', Math.max(0, (currentSet.weight || 0) - weightStep))} className="py-2 rounded-lg bg-white/10 hover:bg-white/15">-{weightStep}</button>
-                        <button onClick={() => updateSet(currentExerciseIndex, currentSetIndex, 'weight', 0)} className="py-2 rounded-lg bg-white/10 hover:bg-white/15">重設</button>
-                        <button onClick={() => updateSet(currentExerciseIndex, currentSetIndex, 'weight', (currentSet.weight || 0) + weightStep)} className="py-2 rounded-lg bg-white/10 hover:bg-white/15">+{weightStep}</button>
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-400 mb-1">次數</label>
-                      <input
-                        type="number"
-                        min={1}
-                        value={currentSet.reps || ''}
-                        onChange={(e) => updateSet(currentExerciseIndex, currentSetIndex, 'reps', Math.max(1, Number(e.target.value)))}
-                        className="w-full px-4 py-3 rounded-xl bg-white/10 border border-white/10 focus:outline-none focus:ring-2 focus:ring-indigo-400 text-white"
-                      />
-                      <div className="mt-2 grid grid-cols-3 gap-2">
-                        <button onClick={() => updateSet(currentExerciseIndex, currentSetIndex, 'reps', Math.max(1, (currentSet.reps || 1) - 1))} className="py-2 rounded-lg bg-white/10 hover:bg-white/15">-1</button>
-                        <div className="flex items-center justify-center text-sm opacity-80">快捷調整</div>
-                        <button onClick={() => updateSet(currentExerciseIndex, currentSetIndex, 'reps', (currentSet.reps || 1) + 1)} className="py-2 rounded-lg bg-white/10 hover:bg-white/15">+1</button>
-                      </div>
-                    </div>
-                  </div>
-                )}
+      {/* 開始訓練確認 iOS 風格 */}
+      <IOSAlertModal
+        open={startConfirmOpen}
+        title="開始訓練？"
+        message={"這將開始本次運動的計時與紀錄，是否開始？"}
+        cancelText="先不要"
+        confirmText="開始"
+        onCancel={() => {
+          setStartConfirmOpen(false);
+          setPendingStart(null);
+        }}
+        onConfirm={() => {
+          setStartConfirmOpen(false);
+          if (pendingStart) {
+            startSet(pendingStart.exIdx, pendingStart.setIdx);
+            setPendingStart(null);
+          }
+        }}
+      />
 
-                {/* 休息區塊 */}
-                <div className="rounded-2xl bg-white/5 border border-white/10 p-4 mb-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="text-xs text-gray-400">休息計時</div>
-                      <div className="text-3xl font-bold tabular-nums">{formatSec(restElapsed)}</div>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm opacity-80">暫停/繼續控制見下方</div>
-                  </div>
-                  <div className="mt-3 flex gap-2">
-                    {!pendingRest ? (
-                      <>
-                        <button
-                          onClick={completeCurrentSet}
-                          className="flex-1 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-semibold"
-                        >
-                          完成這組
-                        </button>
-                        <button
-                          onClick={() => startRestFor(currentExerciseIndex, currentSetIndex)}
-                          className="px-4 py-3 rounded-xl bg-white/10 hover:bg-white/15"
-                        >
-                          只開始休息
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <button
-                          onClick={finishRestAndAdvance}
-                          className="flex-1 py-3 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white font-semibold"
-                        >
-                          結束休息 / 下一組（自動新增）
-                        </button>
-                        <button
-                          onClick={() => setRestRunning((v) => !v)}
-                          className="px-4 py-3 rounded-xl bg-white/10 hover:bg-white/15"
-                        >
-                          {restRunning ? '暫停休息' : '繼續休息'}
-                        </button>
-                        <button
-                          onClick={skipRestAndAdvance}
-                          className="px-4 py-3 rounded-xl bg-white/10 hover:bg-white/15"
-                        >
-                          略過
-                        </button>
-                      </>
-                    )}
-                  </div>
-                  <div className="mt-3 text-sm text-gray-300">結束休息由你決定，按下「結束休息 / 下一組」會自動新增一組並前進。</div>
-                </div>
-
-                {/* 底部控制列 */}
-                <div className="flex items-center justify-between">
-                  <button
-                    onClick={() => { if (trainWatch.isRunning) trainWatch.pause(); else trainWatch.start(); }}
-                    className="px-4 py-3 rounded-xl bg-white/10 hover:bg-white/15"
-                  >
-                    {trainWatch.isRunning ? '暫停訓練' : '繼續訓練'}
-                  </button>
-                  <div className="text-sm text-gray-300">當前第 {currentExerciseIndex + 1}/{exercises.length} 個動作</div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => {
-                        // 上一組/上一動作
-                        setPendingRest(null);
-                        setRestRunning(false);
-                        setRestElapsed(null);
-                        setCurrentSetIndex((s) => {
-                          if (s > 0) return s - 1;
-                          // 回到上一個動作最後一組
-                          setCurrentExerciseIndex((eIdx) => {
-                            if (eIdx > 0) return eIdx - 1;
-                            return eIdx;
-                          });
-                          const prevEx = exercises[Math.max(0, currentExerciseIndex - 1)];
-                          return prevEx ? Math.max(0, prevEx.sets.length - 1) : 0;
-                        });
-                      }}
-                      className="px-3 py-3 rounded-xl bg-white/10 hover:bg-white/15"
-                    >上一組</button>
-                    <button
-                      onClick={() => {
-                        setPendingRest(null);
-                        setRestRunning(false);
-                        setRestElapsed(null);
-                        advanceToNextSet();
-                      }}
-                      className="px-3 py-3 rounded-xl bg-white/10 hover:bg-white/15"
-                    >下一組</button>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="h-full flex items-center justify-center text-gray-300">尚未選擇任何動作</div>
-            )}
-          </div>
-        </div>
-      )}
     </div>
+  );
+}
+
+export default function WorkoutPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-gray-50" />}>
+      <WorkoutPageContent />
+    </Suspense>
   );
 }
 

@@ -2,14 +2,14 @@
 
 import Link from 'next/link';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, Suspense } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '@/lib/store';
 import { logout as logoutAction } from '@/lib/authSlice';
 import Button from '@/components/Button';
 import { useWorkoutTimer } from '@/components/WorkoutTimerContext';
 
-export default function Navigation() {
+function NavigationContent() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [open, setOpen] = useState(false);
   const [animIn, setAnimIn] = useState(false);
@@ -62,8 +62,9 @@ export default function Navigation() {
           <>
             <Link href="/nutrition" onClick={handleNavItemClick} {...item(0, 'text-gray-700 hover:text-gray-900')}>飲食紀錄</Link>
             <Link href="/workout" onClick={handleNavItemClick} {...item(1, 'text-gray-700 hover:text-gray-900')}>健身紀錄</Link>
-            <Link href="/profile" onClick={handleNavItemClick} {...item(2, 'text-gray-700 hover:text-gray-900')}>個人資料</Link>
-            <div className={`px-3 py-2 sm:px-0 sm:py-0 ${stagger ? enter : ''}`} style={stagger ? { transitionDelay: `${3 * 30}ms` } : undefined}>
+            <Link href="/workout/exercises" onClick={handleNavItemClick} {...item(2, 'text-gray-700 hover:text-gray-900')}>動作管理</Link>
+            <Link href="/profile" onClick={handleNavItemClick} {...item(3, 'text-gray-700 hover:text-gray-900')}>個人資料</Link>
+            <div className={`px-3 py-2 sm:px-0 sm:py-0 ${stagger ? enter : ''}`} style={stagger ? { transitionDelay: `${4 * 30}ms` } : undefined}>
               <Button onClick={handleLogout} className="!px-4 !py-2 !text-sm w-full sm:w-auto" variant="secondary">登出</Button>
             </div>
           </>
@@ -88,6 +89,8 @@ export default function Navigation() {
         return '飲食紀錄';
       case '/workout':
         return '健身紀錄';
+      case '/workout/exercises':
+        return '動作管理';
       case '/profile':
         return '個人資料';
       case '/login':
@@ -101,10 +104,12 @@ export default function Navigation() {
   const currentTitle = getTitleFromPath(pathname || '/');
   const workoutFormMode = searchParams?.get('form');
   const isWorkoutForm = (pathname === '/workout') && (workoutFormMode === 'add' || workoutFormMode === 'edit');
-  const { totalSeconds, isRunning, formatMMSS } = useWorkoutTimer();
+  const isWorkoutPage = pathname === '/workout';
+  const { totalSeconds, isRunning, restSeconds, isRestRunning, formatMMSS } = useWorkoutTimer();
   const displayTime = useMemo(() => formatMMSS(totalSeconds), [formatMMSS, totalSeconds]);
+  const displayRestTime = useMemo(() => formatMMSS(restSeconds), [formatMMSS, restSeconds]);
   const forceSticky = (searchParams?.get('navSticky') === '1') || (searchParams?.get('nav') === 'sticky');
-  const shouldStick = isWorkoutForm || forceSticky;
+  const shouldStick = isWorkoutPage || forceSticky;
 
   return (
     <nav className={`bg-white shadow-sm border-b ${shouldStick ? 'sticky top-0 z-40' : ''}`}>
@@ -133,10 +138,49 @@ export default function Navigation() {
               </button>
             )}
             <div className="text-xl font-bold text-gray-900">{currentTitle}</div>
-            {isWorkoutForm && (
-              <div className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs">
-                <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
-                <span className="tabular-nums">{displayTime}</span>
+            {isWorkoutPage && (
+              <div className="ml-2 flex items-center gap-1.5">
+                {/* 訓練計時器 */}
+                <div className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs transition-colors ${
+                  isRunning 
+                    ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
+                    : 'bg-gray-50 text-gray-600 border border-gray-200'
+                } ${isWorkoutForm ? 'cursor-pointer hover:shadow-sm' : ''}`}
+                  {...(isWorkoutForm ? {
+                    onClick: () => {
+                      // 觸發自定義事件讓表單組件處理
+                      window.dispatchEvent(new CustomEvent('toggleTrainingTimer'));
+                    },
+                    title: isRunning ? '點擊暫停訓練' : '點擊開始訓練'
+                  } : {})}
+                >
+                  <div className={`w-2 h-2 rounded-full mr-1.5 ${isRunning ? 'bg-emerald-500 animate-pulse' : 'bg-gray-400'}`}></div>
+                  <span className="tabular-nums font-mono">{displayTime}</span>
+                  <span className="ml-1 opacity-70">訓練</span>
+                </div>
+                
+                {/* 休息計時器 */}
+                {(isRestRunning || restSeconds > 0) && (
+                  <div className={`inline-flex items-center px-2.5 py-1 rounded-md text-xs transition-colors ${
+                    isRestRunning 
+                      ? 'bg-orange-50 text-orange-700 border border-orange-200' 
+                      : 'bg-gray-50 text-gray-600 border border-gray-200'
+                  } ${isWorkoutForm ? 'cursor-pointer hover:shadow-sm' : ''}`}
+                    {...(isWorkoutForm ? {
+                      onClick: () => {
+                        // 觸發自定義事件讓表單組件處理
+                        window.dispatchEvent(new CustomEvent('toggleRestTimer'));
+                      },
+                      title: isRestRunning ? '點擊暫停休息' : '點擊開始休息'
+                    } : {})}
+                  >
+                    <svg className="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span className="tabular-nums font-mono">{displayRestTime}</span>
+                    <span className="ml-1 opacity-70">休息</span>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -178,5 +222,13 @@ export default function Navigation() {
         )}
       </div>
     </nav>
+  );
+}
+
+export default function Navigation() {
+  return (
+    <Suspense fallback={<div className="h-16 bg-white border-b border-gray-200" />}>
+      <NavigationContent />
+    </Suspense>
   );
 } 
