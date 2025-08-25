@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import WheelPicker, { WheelOption } from '../WheelPicker';
 import IOSBottomSheet from './IOSBottomSheet';
 
@@ -15,7 +16,11 @@ interface IOSWheelPickerProps<T extends string | number = string> {
   cancelText?: string;
 }
 
-export default function IOSWheelPicker<T extends string | number = string>({ open, title = '請選擇', options, value, onChange, onClose, confirmText = '完成', cancelText = '取消' }: IOSWheelPickerProps<T>) {
+export default function IOSWheelPicker<T extends string | number = string>({ open, title, options, value, onChange, onClose, confirmText, cancelText }: IOSWheelPickerProps<T>) {
+  const t = useTranslations();
+  const defaultTitle = title || t('common.select');
+  const defaultConfirmText = confirmText || t('common.done');
+  const defaultCancelText = cancelText || t('common.cancel');
   const [temp, setTemp] = useState<T>(value);
 
   useEffect(() => setTemp(value), [value]);
@@ -29,10 +34,10 @@ export default function IOSWheelPicker<T extends string | number = string>({ ope
     <IOSBottomSheet
       open={open}
       onClose={onClose}
-      cancelText={cancelText}
-      confirmText={confirmText}
+      cancelText={defaultCancelText}
+      confirmText={defaultConfirmText}
       onConfirm={() => { onChange(temp); onClose(); }}
-      headerContent={<>{title} · <span className="text-[#007AFF]">{headerLabel}</span></>}
+      headerContent={<>{defaultTitle} · <span className="text-[#007AFF]">{headerLabel}</span></>}
     >
       <div className="bg-gray-50 p-4">
         <WheelPicker

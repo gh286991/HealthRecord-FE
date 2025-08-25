@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import { useTranslations } from 'next-intl';
 
 interface IOSBottomSheetProps {
   open: boolean;
@@ -20,11 +21,14 @@ export default function IOSBottomSheet({
   children,
   title,
   headerContent,
-  cancelText = '取消',
-  confirmText = '完成',
+  cancelText,
+  confirmText,
   onConfirm,
   className = ''
 }: IOSBottomSheetProps) {
+  const t = useTranslations();
+  const defaultCancelText = cancelText || t('common.cancel');
+  const defaultConfirmText = confirmText || t('common.done');
   const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -51,7 +55,7 @@ export default function IOSBottomSheet({
       >
         <div className="flex items-center justify-between p-4 border-b border-gray-200">
           <button onClick={onClose} className="text-[#007AFF] font-medium text-lg">
-            {cancelText}
+            {defaultCancelText}
           </button>
           <div className="flex-1 min-w-0 text-center">
             {headerContent ? (
@@ -69,7 +73,7 @@ export default function IOSBottomSheet({
             }}
             className="text-[#007AFF] font-medium text-lg"
           >
-            {confirmText}
+            {defaultConfirmText}
           </button>
         </div>
 

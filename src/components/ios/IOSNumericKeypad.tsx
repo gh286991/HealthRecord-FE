@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import IOSBottomSheet from './IOSBottomSheet';
 
 interface IOSNumericKeypadProps {
@@ -17,11 +18,13 @@ export default function IOSNumericKeypad({
   open,
   onClose,
   onConfirm,
-  title = '輸入數值',
+  title,
   initialValue = '',
   allowDecimal = false,
   className = ''
 }: IOSNumericKeypadProps) {
+  const t = useTranslations();
+  const defaultTitle = title || t('common.enterValue');
   const [inputStr, setInputStr] = useState<string>('');
 
   useEffect(() => {
@@ -63,7 +66,7 @@ export default function IOSNumericKeypad({
     <IOSBottomSheet
       open={open}
       onClose={onClose}
-      title={title}
+      title={defaultTitle}
       onConfirm={handleConfirm}
       className={className}
     >
@@ -85,7 +88,7 @@ export default function IOSNumericKeypad({
           <button onClick={() => append('4')} className="py-3 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-900 font-medium">4</button>
           <button onClick={() => append('5')} className="py-3 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-900 font-medium">5</button>
           <button onClick={() => append('6')} className="py-3 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-900 font-medium">6</button>
-          <button onClick={clear} className="py-3 rounded-xl bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium">清除</button>
+          <button onClick={clear} className="py-3 rounded-xl bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium">{t('common.clear')}</button>
 
           <button onClick={() => append('1')} className="py-3 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-900 font-medium">1</button>
           <button onClick={() => append('2')} className="py-3 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-900 font-medium">2</button>
@@ -98,7 +101,7 @@ export default function IOSNumericKeypad({
           </button>
 
           <button onClick={() => append('0')} className="col-span-3 py-3 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-900 font-medium">0</button>
-          <button onClick={handleConfirm} className="py-3 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-semibold">完成</button>
+          <button onClick={handleConfirm} className="py-3 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-semibold">{t('common.done')}</button>
         </div>
       </div>
     </IOSBottomSheet>

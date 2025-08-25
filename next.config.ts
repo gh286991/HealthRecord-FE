@@ -1,4 +1,7 @@
 import type { NextConfig } from 'next';
+import createNextIntlPlugin from 'next-intl/plugin';
+
+const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
 
 // 使用動態 require 避免 ESLint 錯誤
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -30,4 +33,4 @@ const nextConfig: NextConfig = {
 
 // 使用類型斷言來解決 next-pwa 版本不兼容問題
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export default withPWA(nextConfig as any);
+export default withNextIntl(withPWA(nextConfig as any));

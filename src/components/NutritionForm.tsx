@@ -497,10 +497,12 @@ export default function NutritionForm({ onSuccess, onCancel, initialData }: Nutr
 
           {uploadedPhoto && (
             <div className="mt-4">
-              <img
+              <Image
                 src={uploadedPhoto}
                 alt="餐點照片預覽"
-                className="w-32 h-32 object-cover rounded-lg mx-auto"
+                width={128}
+                height={128}
+                className="object-cover rounded-lg mx-auto"
               />
             </div>
           )}

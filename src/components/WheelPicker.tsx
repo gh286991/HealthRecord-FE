@@ -46,7 +46,7 @@ export default function WheelPicker<T extends string | number = number>({ value,
     if (autoScrollOnChange) {
       scrollToIndex(selectedIndex, 'smooth');
     }
-  }, [selectedIndex, mounted, autoScrollOnChange]);
+  }, [selectedIndex, mounted, autoScrollOnChange, scrollToIndex]);
 
   const handleScroll = () => {
     const el = containerRef.current;

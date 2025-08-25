@@ -4,6 +4,7 @@ import "./globals.css";
 import Navigation from "@/components/Navigation";
 import PWAInstallPrompt from "@/components/PWAInstallPrompt";
 import Providers from "@/components/Providers";
+import { NextIntlClientProvider } from 'next-intl';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -72,21 +73,30 @@ export const viewport = {
   userScalable: false,
 };
 
-export default function RootLayout({
+// 靜態載入中文訊息
+async function getMessages() {
+  return (await import('../../messages/zh.json')).default;
+}
+
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const messages = await getMessages();
+
   return (
     <html lang="zh-TW">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <Providers>
-          <Navigation />
-          {children}
-          <PWAInstallPrompt />
-        </Providers>
+        <NextIntlClientProvider locale="zh" messages={messages}>
+          <Providers>
+            <Navigation />
+            {children}
+            <PWAInstallPrompt />
+          </Providers>
+        </NextIntlClientProvider>
       </body>
     </html>
   );

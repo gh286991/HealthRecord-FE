@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useRef, Suspense } from 'react';
 import { useStopwatch } from 'react-timer-hook';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import IOSDatePicker from '@/components/ios/IOSDatePicker';
 import IOSDualWheelPicker from '@/components/ios/IOSDualWheelPicker';
 import IOSNumericKeypad from '@/components/ios/IOSNumericKeypad';
@@ -20,7 +21,30 @@ import QuickAddExercise from '@/components/workout/QuickAddExercise';
 
 type ViewMode = 'list' | 'add' | 'edit';
 
+// 輔助函數：只有在有翻譯鍵值時才使用翻譯，否則使用原始名稱
+const createTranslateExerciseName = (t: (key: string) => string) => (key: string, fallback: string) => {
+  // 檢查翻譯鍵值是否以已知的運動項目開頭
+  const exerciseKey = key.replace('exercise.', '');
+  const knownExercises = [
+    'Bench Press', 'Incline Dumbbell Press', 'Dumbbell Flyes', 'Push-ups',
+    'Squat', 'Romanian Deadlift', 'Hip Thrust', 'Lunges', 'Leg Press', 'Calf Raises',
+    'Deadlift', 'Barbell Row', 'Pull-up', 'Lat Pulldown', 'T-Bar Row',
+    'Overhead Press', 'Lateral Raise', 'Rear Delt Flyes', 'Front Raise', 'Shrugs',
+    'Biceps Curl', 'Hammer Curl', 'Preacher Curl', 'Triceps Pushdown', 'Overhead Triceps Extension',
+    'Close-Grip Bench Press', 'Dips', 'Plank', 'Crunches', 'Russian Twists',
+    'Leg Raises', 'Mountain Climbers', 'Burpees', 'Thrusters', 'Clean and Press'
+  ];
+  
+  if (knownExercises.includes(exerciseKey)) {
+    return t(key);
+  } else {
+    return fallback;
+  }
+};
+
 function WorkoutPageContent() {
+  const t = useTranslations();
+  const getTranslatedName = createTranslateExerciseName(t);
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [editingRecord, setEditingRecord] = useState<WorkoutRecord | null>(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -60,7 +84,7 @@ function WorkoutPageContent() {
     try {
       await refetch();
     } catch (e) {
-      console.error('取得健身紀錄失敗', e);
+      console.error('Failed to fetch workout records', e);
     }
   }, [refetch]);
 
@@ -92,12 +116,12 @@ function WorkoutPageContent() {
       await deleteWorkout(confirmId).unwrap();
       await fetchData();
       setToastVariant('success');
-      setToastMsg('紀錄已刪除');
+      setToastMsg(t('workout.recordDeleted'));
       setToastOpen(true);
     } catch (e) {
-      console.error('刪除紀錄失敗', e);
+      console.error('Failed to delete record', e);
       setToastVariant('error');
-      setToastMsg('刪除失敗，請稍後再試');
+      setToastMsg(t('workout.deleteFailed'));
       setToastOpen(true);
     } finally {
       setConfirmOpen(false);
@@ -124,7 +148,7 @@ function WorkoutPageContent() {
         setEditingRecord(null);
         try { router.push('/workout'); } catch { }
         setToastVariant('success');
-        setToastMsg('已儲存健身紀錄');
+        setToastMsg(t('workout.recordSaved'));
         setToastOpen(true);
       } else {
         await createWorkout(bodyWithDurations).unwrap();
@@ -151,13 +175,13 @@ function WorkoutPageContent() {
         });
         setSummaryOpen(true);
         setToastVariant('success');
-        setToastMsg('已儲存健身紀錄');
+        setToastMsg(t('workout.recordSaved'));
         setToastOpen(true);
       }
     } catch (e) {
-      console.error('儲存健身紀錄失敗', e);
+      console.error('Failed to save workout record', e);
       setToastVariant('error');
-      setToastMsg('儲存失敗，請稍後再試');
+      setToastMsg(t('workout.saveFailed'));
       setToastOpen(true);
     }
   };
@@ -180,7 +204,7 @@ function WorkoutPageContent() {
       <div className="min-h-screen bg-gradient-to-br from-green-50 via-blue-50 to-purple-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">驗證登入狀態中...</p>
+          <p className="text-gray-600">{t('workout.verifyingLogin')}</p>
         </div>
       </div>
     );
@@ -197,7 +221,7 @@ function WorkoutPageContent() {
             <Card className="p-6 mb-6">
               <div className="flex flex-col sm:flex-row gap-6 items-start sm:items-center">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">選擇日期</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">{t('workout.selectDate')}</label>
                   <IOSDatePicker
                     selectedDate={selectedDate}
                     onChange={setSelectedDate}
@@ -208,19 +232,19 @@ function WorkoutPageContent() {
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 w-full">
                     <Card className="p-4 text-center">
                       <div className="text-2xl font-semibold text-gray-900">{listData.dailyTotals.totalVolume}</div>
-                      <div className="text-xs text-gray-500 mt-1">總訓練量</div>
+                      <div className="text-xs text-gray-500 mt-1">{t('workout.totalVolume')}</div>
                     </Card>
                     <Card className="p-4 text-center">
                       <div className="text-2xl font-semibold text-gray-900">{listData.dailyTotals.totalSets}</div>
-                      <div className="text-xs text-gray-500 mt-1">總組數</div>
+                      <div className="text-xs text-gray-500 mt-1">{t('workout.totalSets')}</div>
                     </Card>
                     <Card className="p-4 text-center">
                       <div className="text-2xl font-semibold text-gray-900">{listData.dailyTotals.totalReps}</div>
-                      <div className="text-xs text-gray-500 mt-1">次數</div>
+                      <div className="text-xs text-gray-500 mt-1">{t('workout.totalReps')}</div>
                     </Card>
                     <Card className="p-4 text-center">
                       <div className="text-2xl font-semibold text-gray-900">{listData.dailyTotals.recordCount}</div>
-                      <div className="text-xs text-gray-500 mt-1">筆數</div>
+                      <div className="text-xs text-gray-500 mt-1">{t('workout.recordCount')}</div>
                     </Card>
                   </div>
                 )}
@@ -231,13 +255,13 @@ function WorkoutPageContent() {
               {(((listData?.records?.length ?? 0) === 0)) ? (
                 <Card className="p-12 text-center">
                   <div className="text-gray-300 text-8xl mb-6">🏋️</div>
-                  <h3 className="text-xl font-medium text-gray-900 mb-3">今天還沒有健身紀錄</h3>
-                  <p className="text-gray-600 mb-6">開始記錄你的訓練！</p>
+                  <h3 className="text-xl font-medium text-gray-900 mb-3">{t('workout.noRecordsToday')}</h3>
+                  <p className="text-gray-600 mb-6">{t('workout.startRecording')}</p>
                   <Button onClick={handleAdd} className="px-6 py-3 shadow-lg">
                     <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                     </svg>
-                    新增第一筆紀錄
+                    {t('workout.addFirstRecord')}
                   </Button>
                 </Card>
               ) : (
@@ -261,7 +285,7 @@ function WorkoutPageContent() {
                     <div className="p-6 space-y-4">
                       {r.exercises.map((ex: WorkoutExercise, idx: number) => (
                         <div key={idx} className="border rounded-lg p-4">
-                          <div className="font-semibold text-gray-900 mb-2">{ex.exerciseName}</div>
+                          <div className="font-semibold text-gray-900 mb-2">{getTranslatedName(`exercise.${ex.exerciseName}`, ex.exerciseName)}</div>
                           <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 text-sm text-gray-700">
                             {ex.sets.map((s: { weight: number; reps: number }, sIdx: number) => (
                               <div key={sIdx} className="bg-gray-50 rounded p-2 text-center">
@@ -275,7 +299,7 @@ function WorkoutPageContent() {
                       <div className="grid grid-cols-3 sm:grid-cols-6 gap-4">
                         <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
                           <div className="text-xl font-bold text-green-600">{r.totalVolume}</div>
-                          <div className="text-xs text-gray-600 mt-1">總量</div>
+                          <div className="text-xs text-gray-600 mt-1">{t('workout.totalVolume')}</div>
                         </div>
                         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">
                           <div className="text-xl font-bold text-blue-600">{r.totalSets}</div>
@@ -283,24 +307,24 @@ function WorkoutPageContent() {
                         </div>
                         <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 text-center">
                           <div className="text-xl font-bold text-orange-600">{r.totalReps}</div>
-                          <div className="text-xs text-gray-600 mt-1">次數</div>
+                          <div className="text-xs text-gray-600 mt-1">{t('workout.totalReps')}</div>
                         </div>
                         {typeof r.workoutDurationSeconds === 'number' && r.workoutDurationSeconds > 0 && (
                           <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 text-center col-span-3 sm:col-span-1">
                             <div className="text-xl font-bold text-purple-600">{Math.floor((r.workoutDurationSeconds || 0) / 60)} 分</div>
-                            <div className="text-xs text-gray-600 mt-1">總時間</div>
+                            <div className="text-xs text-gray-600 mt-1">{t('workout.totalTime')}</div>
                           </div>
                         )}
                         {typeof r.totalRestSeconds === 'number' && r.totalRestSeconds > 0 && (
                           <div className="bg-rose-50 border border-rose-200 rounded-lg p-4 text-center col-span-3 sm:col-span-1">
                             <div className="text-xl font-bold text-rose-600">{Math.floor((r.totalRestSeconds || 0) / 60)} 分</div>
-                            <div className="text-xs text-gray-600 mt-1">休息時間</div>
+                            <div className="text-xs text-gray-600 mt-1">{t('workout.restTime')}</div>
                           </div>
                         )}
                         {typeof r.workoutDurationSeconds === 'number' && r.workoutDurationSeconds > 0 && (
                           <div className="bg-teal-50 border border-teal-200 rounded-lg p-4 text-center col-span-3 sm:col-span-1">
                             <div className="text-xl font-bold text-teal-600">{Math.max(0, Math.floor((r.workoutDurationSeconds - (r.totalRestSeconds || 0)) / 60))} 分</div>
-                            <div className="text-xs text-gray-600 mt-1">運動時間</div>
+                            <div className="text-xs text-gray-600 mt-1">{t('workout.workoutTime')}</div>
                           </div>
                         )}
                       </div>
@@ -327,10 +351,10 @@ function WorkoutPageContent() {
       <Toast open={toastOpen} message={toastMsg} variant={toastVariant} onClose={() => setToastOpen(false)} />
       <ConfirmDialog
         open={confirmOpen}
-        title="刪除確認"
-        message="確定要刪除這筆健身紀錄嗎？此動作無法復原。"
-        confirmText="刪除"
-        cancelText="取消"
+        title={t('workout.deleteConfirm')}
+        message={t('workout.deleteMessage')}
+        confirmText={t('common.delete')}
+        cancelText={t('common.cancel')}
         onConfirm={confirmDelete}
         onCancel={() => setConfirmOpen(false)}
       />
@@ -369,6 +393,8 @@ function WorkoutForm({ draftKey, initialData, onCancel, onSubmit }: {
   onCancel: () => void;
   onSubmit: (payload: { date: string; exercises: WorkoutExercise[]; notes?: string; workoutDurationSeconds?: number; totalRestSeconds?: number }) => void;
 }) {
+  const t = useTranslations();
+  const getTranslatedName = createTranslateExerciseName(t);
   const [date, setDate] = useState(initialData?.date || new Date().toISOString().split('T')[0]);
   const [exercises, setExercises] = useState<WorkoutExercise[]>(initialData?.exercises || []);
   const [notes, setNotes] = useState(initialData?.notes || '');
@@ -440,7 +466,7 @@ function WorkoutForm({ draftKey, initialData, onCancel, onSubmit }: {
         // 恢復主碼錶到草稿的經過時間
         try { trainWatch.reset(new Date(Date.now() - draft.sessionMs), false); } catch { }
       }
-      showToast('已從草稿恢復');
+      showToast(t('workout.restoredFromDraft'));
     } catch { }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draftKey]);
@@ -517,19 +543,19 @@ function WorkoutForm({ draftKey, initialData, onCancel, onSubmit }: {
 
   const removeExercise = (idx: number) => {
     setExercises((prev) => prev.filter((_, i) => i !== idx));
-    showToast('已移除動作');
+    showToast(t('workout.exerciseRemoved'));
   };
 
   // 動作名稱由常用清單帶入，前端不允許編輯
 
   const addSet = (exIdx: number) => {
     setExercises((prev) => prev.map((ex, i) => i === exIdx ? { ...ex, sets: [...ex.sets, { weight: 0, reps: 8, completed: false }] } : ex));
-    showToast('已新增一組');
+    showToast(t('workout.setAdded'));
   };
 
   const removeSet = (exIdx: number, setIdx: number) => {
     setExercises((prev) => prev.map((ex, i) => i === exIdx ? { ...ex, sets: ex.sets.filter((_, s) => s !== setIdx) } : ex));
-    showToast('已刪除一組');
+    showToast(t('workout.setDeleted'));
   };
 
   const updateSet = (exIdx: number, setIdx: number, field: 'weight' | 'reps' | 'completed' | 'restSeconds', value: number | boolean) => {
@@ -603,7 +629,7 @@ function WorkoutForm({ draftKey, initialData, onCancel, onSubmit }: {
         {/* 記錄日期 */}
         <div>
           <div className="flex items-center gap-3 mb-2">
-            <label className="block text-sm font-medium text-gray-700">記錄日期</label>
+            <label className="block text-sm font-medium text-gray-700">{t('workout.recordDate')}</label>
             <div className="flex-1 px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-900">
               {new Date(date).toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' })}
             </div>
@@ -615,11 +641,15 @@ function WorkoutForm({ draftKey, initialData, onCancel, onSubmit }: {
             <div key={idx} className="bg-gray-50 rounded-lg p-4">
               <div className="flex items-start gap-3 mb-3">
                 <div className="flex-1">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">動作名稱</label>
-                  <input value={ex.exerciseName} readOnly placeholder="請由下方『新增動作』選擇常用項目" className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-900" />
+                  <label className="block text-sm font-medium text-gray-700 mb-2">{t('workout.exerciseName')}</label>
+                  <div className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-900 min-h-[42px] flex items-center">
+                    {ex.exerciseName ? getTranslatedName(`exercise.${ex.exerciseName}`, ex.exerciseName) : (
+                      <span className="text-gray-400">{t('workout.selectFromCommon')}</span>
+                    )}
+                  </div>
                 </div>
                 <div className="w-14">
-                  <label className="block text-sm font-medium text-transparent mb-2 select-none">刪除</label>
+                  <label className="block text-sm font-medium text-transparent mb-2 select-none">{t('common.delete')}</label>
                   {exercises.length > 1 && (
                     <button type="button" onClick={() => removeExercise(idx)} className="inline-flex items-center justify-center h-12 w-14 rounded-md bg-red-500 hover:bg-red-600 text-white transition active:scale-95">
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -654,7 +684,7 @@ function WorkoutForm({ draftKey, initialData, onCancel, onSubmit }: {
                       </button>
 
                       <div className="flex items-center gap-2 flex-1">
-                        <label className="sr-only">重量 (kg)</label>
+                        <label className="sr-only">{t('workout.weight')} ({t('workout.kg')})</label>
                         <input
                           type="number"
                           value={s.weight || ''}
@@ -662,7 +692,7 @@ function WorkoutForm({ draftKey, initialData, onCancel, onSubmit }: {
                           onClick={(e) => {
                             if (isMobile) {
                               e.preventDefault();
-                              openNumPad({ exIdx: idx, setIdx: sIdx, field: 'weight', title: '輸入重量 (kg)', initial: s.weight || '', allowDecimal: true });
+                              openNumPad({ exIdx: idx, setIdx: sIdx, field: 'weight', title: t('workout.enterWeight'), initial: s.weight || '', allowDecimal: true });
                             }
                           }}
                           onFocus={(e) => {
@@ -673,9 +703,9 @@ function WorkoutForm({ draftKey, initialData, onCancel, onSubmit }: {
                           onChange={(e) => updateSet(idx, sIdx, 'weight', Number(e.target.value))}
                           className="h-10 w-24 px-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-green-500 focus:border-transparent text-gray-900"
                         />
-                        <span className="text-gray-600">kg</span>
+                        <span className="text-gray-600">{t('workout.kg')}</span>
 
-                        <label className="sr-only">次數</label>
+                        <label className="sr-only">{t('workout.reps')}</label>
                         <input
                           type="number"
                           min={1}
@@ -684,7 +714,7 @@ function WorkoutForm({ draftKey, initialData, onCancel, onSubmit }: {
                           onClick={(e) => {
                             if (isMobile) {
                               e.preventDefault();
-                              openNumPad({ exIdx: idx, setIdx: sIdx, field: 'reps', title: '輸入次數', initial: s.reps || '', allowDecimal: false });
+                              openNumPad({ exIdx: idx, setIdx: sIdx, field: 'reps', title: t('workout.enterReps'), initial: s.reps || '', allowDecimal: false });
                             }
                           }}
                           onFocus={(e) => {
@@ -695,7 +725,7 @@ function WorkoutForm({ draftKey, initialData, onCancel, onSubmit }: {
                           onChange={(e) => updateSet(idx, sIdx, 'reps', Math.max(1, Number(e.target.value)))}
                           className="h-10 w-20 px-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-green-500 focus:border-transparent text-gray-900"
                         />
-                        <span className="text-gray-600">次</span>
+                        <span className="text-gray-600">{t('workout.times')}</span>
                       </div>
 
                       {/* 組間/本組控制 */}
@@ -707,13 +737,13 @@ function WorkoutForm({ draftKey, initialData, onCancel, onSubmit }: {
                             setStartConfirmOpen(true);
                           }}
                           className="px-2 py-1 rounded text-xs font-medium bg-emerald-100 hover:bg-emerald-200 text-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                          title="開始本組"
+                          title={t('workout.start')}
                           disabled={!!currentRun || !!s.completed}
                         >
-                          開始
+                          {t('workout.start')}
                         </button>
                         {workSecondsMap[`${idx}-${sIdx}`] !== undefined && workSecondsMap[`${idx}-${sIdx}`] > 0 && (
-                          <span className="text-xs text-gray-500">本組運動 {formatSec(workSecondsMap[`${idx}-${sIdx}`])}</span>
+                          <span className="text-xs text-gray-500">{t('workout.thisSetWorkout')} {formatSec(workSecondsMap[`${idx}-${sIdx}`])}</span>
                         )}
                       </div>
                       {/* 休息時間會在完成到下一次開始之間自動累計，不提供手動按鈕 */}
@@ -729,7 +759,7 @@ function WorkoutForm({ draftKey, initialData, onCancel, onSubmit }: {
                     <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                     </svg>
-                    新增一組
+                    {t('workout.addSet')}
                   </button>
                 </div>
               </div>
@@ -741,7 +771,7 @@ function WorkoutForm({ draftKey, initialData, onCancel, onSubmit }: {
               onClick={() => setDualOpen(true)}
               className="w-full py-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-sm font-medium transition-colors"
             >
-              + 動作
+              {t('workout.addExerciseAction')}
             </button>
           <div className="mt-2 grid grid-cols-2 gap-2">
             <button
@@ -749,45 +779,19 @@ function WorkoutForm({ draftKey, initialData, onCancel, onSubmit }: {
               onClick={() => setQuickOpen(true)}
               className="w-full py-2 rounded-lg bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium transition-colors"
             >
-              + 自訂動作
+              {t('workout.addCustomExercise')}
             </button>
           </div>
-          {/* 專注模式按鈕 - 暫時隱藏，未來重新設計後啟用
-          <div className="mt-2 flex gap-2">
-            <button
-              type="button"
-              onClick={() => {
-                if (exercises.length === 0) {
-                  // 允許直接新增
-                }
-                setFocusMode(true);
-                // 專注模式改用自身碼錶，這裡暫停外部碼錶
-                trainWatch.pause();
-                setCurrentExerciseIndex((v) => (v < exercises.length ? v : 0));
-                setCurrentSetIndex((s) => {
-                  const ex = exercises[Math.min(currentExerciseIndex, exercises.length - 1)];
-                  return ex && s < ex.sets.length ? s : 0;
-                });
-                showToast('已開啟專注模式');
-              }}
-              className="px-4 py-2 rounded-xl bg-purple-500 hover:bg-purple-600 text-white text-sm font-medium transition-colors"
-            >
-              🎯 專注
-            </button>
-          </div>
-          */}
-
-          {/* 新的雙欄輪盤 */}
           <IOSDualWheelPicker
             open={dualOpen}
-            title="新增動作"
+            title={t('workout.addExercise')}
             bodyParts={(bodyParts || [])}
             exercises={(commonExercises || []).map(e => ({ _id: e._id, name: e.name, bodyPart: e.bodyPart }))}
             onClose={() => setDualOpen(false)}
             onConfirm={(ex) => {
               setExercises((prev) => [...prev, { exerciseName: ex.name, bodyPart: ex.bodyPart, exerciseId: ex._id, sets: [{ weight: 0, reps: 8 }] }]);
               setDualOpen(false);
-              showToast(`已加入：${ex.name}`);
+              showToast(`${t('workout.exerciseAdded')}：${ex.name}`);
               try { document.getElementById('exercise-bottom')?.scrollIntoView({ behavior: 'smooth' }); } catch { }
             }}
           />
@@ -797,7 +801,7 @@ function WorkoutForm({ draftKey, initialData, onCancel, onSubmit }: {
             onAdded={(ex) => {
               setExercises((prev) => [...prev, { exerciseName: ex.name, bodyPart: ex.bodyPart, exerciseId: ex._id, sets: [{ weight: 0, reps: 8 }] }]);
               setQuickOpen(false);
-              showToast(`已加入自訂：${ex.name}`);
+              showToast(`${t('workout.customExerciseAdded')}：${ex.name}`);
               try { document.getElementById('exercise-bottom')?.scrollIntoView({ behavior: 'smooth' }); } catch { }
             }}
           />
@@ -805,21 +809,21 @@ function WorkoutForm({ draftKey, initialData, onCancel, onSubmit }: {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">備註</label>
-          <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-gray-900" placeholder="感受、節奏、等..." />
+          <label className="block text-sm font-medium text-gray-700 mb-2">{t('workout.notes')}</label>
+          <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-gray-900" placeholder={t('workout.notesPlaceholder')} />
         </div>
 
         <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-xl p-4 mt-4">
-          <div className="text-sm text-gray-700">目前總訓練量：<span className="font-semibold text-green-700">{totalVolume}</span></div>
+          <div className="text-sm text-gray-700">{t('workout.currentTotalVolume')}：<span className="font-semibold text-green-700">{totalVolume}</span></div>
         </div>
 
         <div className="flex gap-4 pt-6">
-          <button onClick={onCancel} className="flex-1 py-3 px-4 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors active:scale-95">取消</button>
+          <button onClick={onCancel} className="flex-1 py-3 px-4 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-50 transition-colors active:scale-95">{t('common.cancel')}</button>
           <button
             onClick={() => {
               const invalid = exercises.some(ex => !ex.exerciseId || ex.sets.some(s => !s.reps || s.reps < 1));
               if (invalid) {
-                alert('請從常用動作選擇項目，並確保每組次數至少為 1');
+                alert(t('workout.selectFromCommon'));
                 return;
               }
               const hasStarted = !!trainWatch.totalSeconds || !!currentRun || Object.keys(workSecondsMap).length > 0;
@@ -832,7 +836,7 @@ function WorkoutForm({ draftKey, initialData, onCancel, onSubmit }: {
             }}
             className="flex-1 py-3 px-4 bg-gradient-to-r from-green-500 to-blue-600 text-white font-medium rounded-lg hover:from-green-600 hover:to-blue-700 transition-all duration-200 active:scale-95"
           >
-            {initialData ? '儲存變更' : (!!trainWatch.totalSeconds || !!currentRun || Object.keys(workSecondsMap).length > 0 ? '完成運動' : '新增紀錄')}
+            {initialData ? t('workout.saveChanges') : (!!trainWatch.totalSeconds || !!currentRun || Object.keys(workSecondsMap).length > 0 ? t('workout.finishWorkout') : t('workout.addRecord'))}
           </button>
         </div>
       </div>
@@ -860,10 +864,10 @@ function WorkoutForm({ draftKey, initialData, onCancel, onSubmit }: {
       {/* 完成確認 iOS 風格 */}
       <IOSAlertModal
         open={finishConfirmOpen}
-        title="完成訓練？"
-        message={"是否要完成並送出本次訓練紀錄？\n送出後將顯示統計摘要。"}
-        cancelText="再確認一下"
-        confirmText="完成並送出"
+        title={t('workout.completeWorkout')}
+        message={t('workout.completeWorkoutMessage')}
+        cancelText={t('workout.doubleCheck')}
+        confirmText={t('workout.completeAndSubmit')}
         onCancel={() => setFinishConfirmOpen(false)}
         onConfirm={() => {
           setFinishConfirmOpen(false);
@@ -883,10 +887,10 @@ function WorkoutForm({ draftKey, initialData, onCancel, onSubmit }: {
       {/* 開始訓練確認 iOS 風格 */}
       <IOSAlertModal
         open={startConfirmOpen}
-        title="開始訓練？"
-        message={"這將開始本次運動的計時與紀錄，是否開始？"}
-        cancelText="先不要"
-        confirmText="開始"
+        title={t('workout.startTraining')}
+        message={t('workout.startTrainingMessage')}
+        cancelText={t('workout.notYet')}
+        confirmText={t('workout.start')}
         onCancel={() => {
           setStartConfirmOpen(false);
           setPendingStart(null);

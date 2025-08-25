@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useMemo } from 'react';
+import { useTranslations } from 'next-intl';
 
 type SummaryData = {
   date: string;
@@ -23,6 +24,7 @@ export default function WorkoutSummaryModal({
   encouragement?: string;
   onClose: () => void;
 }) {
+  const t = useTranslations();
   const { workoutMin, restMin, activeMin } = useMemo(() => {
     const w = Math.max(0, data?.workoutDurationSeconds || 0);
     const r = Math.max(0, data?.totalRestSeconds || 0);
@@ -42,7 +44,7 @@ export default function WorkoutSummaryModal({
       <div className="relative w-[min(92vw,520px)] rounded-3xl bg-white shadow-[0_24px_80px_rgba(0,0,0,.18)] p-6">
         <div className="text-center mb-4">
           <div className="text-2xl">🎉</div>
-          <div className="text-lg font-semibold text-gray-900 mt-2">本次訓練完成！</div>
+          <div className="text-lg font-semibold text-gray-900 mt-2">{t('workout.workoutCompleted')}</div>
           {encouragement && (
             <div className="text-sm text-gray-600 mt-1">{encouragement}</div>
           )}
@@ -52,15 +54,15 @@ export default function WorkoutSummaryModal({
         <div className="grid grid-cols-3 gap-3 mb-4">
           <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-3 text-center">
             <div className="text-xl font-bold text-emerald-700">{data.totalVolume}</div>
-            <div className="text-xs text-emerald-700/80 mt-1">總訓練量</div>
+            <div className="text-xs text-emerald-700/80 mt-1">{t('workout.totalVolume')}</div>
           </div>
           <div className="rounded-xl bg-blue-50 border border-blue-200 p-3 text-center">
             <div className="text-xl font-bold text-blue-700">{data.totalSets}</div>
-            <div className="text-xs text-blue-700/80 mt-1">總組數</div>
+            <div className="text-xs text-blue-700/80 mt-1">{t('workout.totalSets')}</div>
           </div>
           <div className="rounded-xl bg-orange-50 border border-orange-200 p-3 text-center">
             <div className="text-xl font-bold text-orange-700">{data.totalReps}</div>
-            <div className="text-xs text-orange-700/80 mt-1">總次數</div>
+            <div className="text-xs text-orange-700/80 mt-1">{t('workout.totalReps')}</div>
           </div>
         </div>
 
@@ -68,15 +70,15 @@ export default function WorkoutSummaryModal({
           <div className="grid grid-cols-3 gap-3 mb-4">
             <div className="rounded-xl bg-purple-50 border border-purple-200 p-3 text-center">
               <div className="text-lg font-semibold text-purple-700">{workoutMin} 分</div>
-              <div className="text-xs text-purple-700/80 mt-1">總時間</div>
+              <div className="text-xs text-purple-700/80 mt-1">{t('workout.totalTime')}</div>
             </div>
             <div className="rounded-xl bg-rose-50 border border-rose-200 p-3 text-center">
               <div className="text-lg font-semibold text-rose-700">{restMin} 分</div>
-              <div className="text-xs text-rose-700/80 mt-1">休息時間</div>
+              <div className="text-xs text-rose-700/80 mt-1">{t('workout.restTime')}</div>
             </div>
             <div className="rounded-xl bg-teal-50 border border-teal-200 p-3 text-center">
               <div className="text-lg font-semibold text-teal-700">{activeMin} 分</div>
-              <div className="text-xs text-teal-700/80 mt-1">運動時間</div>
+              <div className="text-xs text-teal-700/80 mt-1">{t('workout.workoutTime')}</div>
             </div>
           </div>
         )}
@@ -85,10 +87,10 @@ export default function WorkoutSummaryModal({
           <table className="w-full text-sm">
             <thead className="bg-gray-50 text-gray-500">
               <tr>
-                <th className="text-left px-4 py-2">動作</th>
-                <th className="text-right px-4 py-2">組</th>
-                <th className="text-right px-4 py-2">次</th>
-                <th className="text-right px-4 py-2">量</th>
+                <th className="text-left px-4 py-2">{t('workout.exerciseName')}</th>
+                <th className="text-right px-4 py-2">{t('workout.sets')}</th>
+                <th className="text-right px-4 py-2">{t('workout.reps')}</th>
+                <th className="text-right px-4 py-2">{t('workout.volume')}</th>
               </tr>
             </thead>
             <tbody>
@@ -110,7 +112,7 @@ export default function WorkoutSummaryModal({
             className="w-full py-3 rounded-2xl bg-[#0A84FF] hover:bg-[#0a7aeb] text-white font-semibold active:scale-95 transition"
             onClick={onClose}
           >
-            完成
+            {t('common.done')}
           </button>
         </div>
       </div>
