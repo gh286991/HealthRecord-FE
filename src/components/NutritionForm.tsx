@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import Image from 'next/image';
 import { nutritionApi, foodApi, CreateNutritionRecord, NutritionRecord, Food } from '@/lib/api';
 
 const nutritionSchema = z.object({
