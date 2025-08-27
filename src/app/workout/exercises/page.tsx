@@ -7,6 +7,7 @@ import { useTranslations } from 'next-intl';
 export const dynamic = 'force-dynamic';
 import Card from '@/components/Card';
 import { useGetBodyPartsQuery, useGetCommonExercisesQuery, useAddUserExerciseMutation, useUpdateUserExerciseMutation, useDeleteUserExerciseMutation } from '@/lib/workoutApi';
+import IOSAlertModal from '@/components/ios/IOSAlertModal';
 
 type ExerciseItem = { _id: string; name: string; bodyPart?: string; isCustom?: boolean };
 
@@ -42,6 +43,7 @@ export default function ManageExercisesPage() {
   const [name, setName] = useState('');
   const [activeTab, setActiveTab] = useState<string>('');
   const [formOpen, setFormOpen] = useState<boolean>(false);
+  const [alertInfo, setAlertInfo] = useState<{ open: boolean; title: string; message: string }>({ open: false, title: '', message: '' });
 
   const filtered = useMemo<ExerciseItem[]>(() => {
     const list = (exercises as ExerciseItem[]) || [];
@@ -71,7 +73,16 @@ export default function ManageExercisesPage() {
             <div className="flex items-center gap-2">
               <div className="px-3 py-2 bg-blue-100 text-blue-800 rounded border text-sm">{t(`bodyPart.${activeTab}`)}</div>
               <input className="border rounded px-3 py-2 flex-1 text-gray-900 placeholder:text-gray-400 bg-white" placeholder={t('workout.enterExerciseName')} value={name} onChange={(e) => setName(e.target.value)} />
-              <button onClick={async () => { if (!name.trim()) return; await addUser({ name: name.trim(), bodyPart: activeTab }).unwrap(); setName(''); }} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors">
+              <button onClick={async () => { 
+                if (!name.trim()) return; 
+                try {
+                  await addUser({ name: name.trim(), bodyPart: activeTab }).unwrap(); 
+                  setName(''); 
+                } catch (err: unknown) {
+                  const message = (err as { data?: { message?: string } })?.data?.message || t('workout.addFailed');
+                  setAlertInfo({ open: true, title: t('workout.addFailed'), message });
+                }
+              }} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors">
                 {t('common.add')}
               </button>
             </div>
@@ -109,6 +120,13 @@ export default function ManageExercisesPage() {
           ))}
         </div>
       </Card>
+      <IOSAlertModal
+        open={alertInfo.open}
+        title={alertInfo.title}
+        message={alertInfo.message}
+        onConfirm={() => setAlertInfo({ ...alertInfo, open: false })}
+        onCancel={() => setAlertInfo({ ...alertInfo, open: false })}
+      />
     </div>
   );
 }

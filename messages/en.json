@@ -16,7 +16,9 @@
     "close": "Close",
     "done": "Done",
     "ok": "OK",
-    "select": "Select"
+    "select": "Select",
+    "undo": "Undo",
+    "undoAll": "Undo All"
   },
   "bodyPart": {
     "chest": "Chest",
@@ -134,6 +136,14 @@
     "workoutCompleted": "Workout Completed!",
     "volume": "Volume",
     "sets": "Sets",
-    "exerciseCount": "Exercises"
+    "exerciseCount": "Exercises",
+    "confirmDeleteExerciseTitle": "Confirm Delete Exercise",
+    "confirmDeleteExerciseMessage": "This action will permanently delete this exercise and all its sets. Are you sure you want to continue?",
+    "confirmDeleteSetTitle": "Confirm Delete Set",
+    "confirmDeleteSetMessage": "This action will permanently delete this set. Are you sure you want to continue?",
+    "setDeletedUndo": "Set deleted",
+    "setRestored": "Set restored",
+    "setsRestored": "Sets restored",
+    "setsDeletedCount": "{count} sets deleted"
   }
 }

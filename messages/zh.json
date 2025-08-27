@@ -16,7 +16,9 @@
     "close": "關閉",
     "done": "完成",
     "ok": "確定",
-    "select": "選擇"
+    "select": "選擇",
+    "undo": "撤銷",
+    "undoAll": "撤銷全部"
   },
   "bodyPart": {
     "chest": "胸部",
@@ -134,6 +136,14 @@
     "workoutCompleted": "本次訓練完成！",
     "volume": "總量",
     "sets": "組數",
-    "exerciseCount": "動作數"
+    "exerciseCount": "動作數",
+    "confirmDeleteExerciseTitle": "確認刪除運動項目",
+    "confirmDeleteExerciseMessage": "此操作將永久刪除此運動項目及其所有組數。您確定要繼續嗎？",
+    "confirmDeleteSetTitle": "確認刪除組數",
+    "confirmDeleteSetMessage": "此操作將永久刪除此組數。您確定要繼續嗎？",
+    "setDeletedUndo": "組數已刪除",
+    "setRestored": "組數已恢復",
+    "setsRestored": "組數已恢復",
+    "setsDeletedCount": "已刪除 {count} 組"
   }
 }

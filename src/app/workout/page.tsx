@@ -8,7 +8,7 @@ import IOSDatePicker from '@/components/ios/IOSDatePicker';
 import IOSDualWheelPicker from '@/components/ios/IOSDualWheelPicker';
 import IOSNumericKeypad from '@/components/ios/IOSNumericKeypad';
 import { tokenUtils } from '@/lib/api';
-import { WorkoutRecord, WorkoutExercise, useCreateWorkoutMutation, useGetWorkoutListQuery, useUpdateWorkoutMutation, useGetBodyPartsQuery, useGetCommonExercisesQuery, useDeleteWorkoutMutation } from '@/lib/workoutApi';
+import { WorkoutRecord, WorkoutExercise, WorkoutSet, useCreateWorkoutMutation, useGetWorkoutListQuery, useUpdateWorkoutMutation, useGetBodyPartsQuery, useGetCommonExercisesQuery, useDeleteWorkoutMutation } from '@/lib/workoutApi';
 import Button from '@/components/Button';
 import Card from '@/components/Card';
 import Toast from '@/components/Toast';
@@ -212,7 +212,7 @@ function WorkoutPageContent() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-blue-50 to-purple-50">
-      <div className="container mx-auto py-4 px-4">
+      <div className="container mx-auto py-3 px-3">
         {viewMode === 'list' && (
           <div className="max-w-5xl mx-auto">
             {/* 頁面大標題改由上方 Nav 顯示，這裡先隱藏 */}
@@ -393,16 +393,45 @@ function WorkoutForm({ draftKey, initialData, onCancel, onSubmit }: {
   onCancel: () => void;
   onSubmit: (payload: { date: string; exercises: WorkoutExercise[]; notes?: string; workoutDurationSeconds?: number; totalRestSeconds?: number }) => void;
 }) {
+  interface ClientWorkoutSet extends WorkoutSet {
+    clientId: string;
+  }
+
+  interface ClientWorkoutExercise extends WorkoutExercise {
+    clientId: string;
+    sets: ClientWorkoutSet[]; // Override sets to use ClientWorkoutSet
+  }
+
   const t = useTranslations();
   const getTranslatedName = createTranslateExerciseName(t);
   const [date, setDate] = useState(initialData?.date || new Date().toISOString().split('T')[0]);
-  const [exercises, setExercises] = useState<WorkoutExercise[]>(initialData?.exercises || []);
+  const [exercises, setExercises] = useState<ClientWorkoutExercise[]>(() => {
+    const initial = initialData?.exercises || [];
+    return initial.map(ex => ({
+      ...ex,
+      clientId: (ex as WorkoutExercise & { clientId?: string }).clientId || crypto.randomUUID(), // Reuse if exists
+      sets: (ex.sets || []).map(s => ({
+        ...s,
+        clientId: (s as WorkoutSet & { clientId?: string }).clientId || crypto.randomUUID(), // Reuse if exists
+      })),
+    }));
+  });
   const [notes, setNotes] = useState(initialData?.notes || '');
   const { data: bodyParts } = useGetBodyPartsQuery();
   const { data: commonExercises } = useGetCommonExercisesQuery(undefined); // 取得全部常用動作供雙欄輪盤使用
   const [dualOpen, setDualOpen] = useState(false);
   const [quickOpen, setQuickOpen] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+
+  const [recentlyDeletedSets, setRecentlyDeletedSets] = useState<Array<{ exIdx: number; setIdx: number; data: ClientWorkoutSet }>>([]);
+  const [undoToastOpen, setUndoToastOpen] = useState(false);
+  const undoTimerRef = useRef<number | null>(null);
+
+  // State for exercise deletion confirmation
+  const [exerciseConfirmOpen, setExerciseConfirmOpen] = useState(false);
+  const [exerciseToDeleteIdx, setExerciseToDeleteIdx] = useState<number | null>(null);
+
+  
 
   // 手機偵測（小於等於 640px 視為手機）
   const [isMobile, setIsMobile] = useState(false);
@@ -460,7 +489,14 @@ function WorkoutForm({ draftKey, initialData, onCancel, onSubmit }: {
       if (!raw) return;
       const draft = JSON.parse(raw) as { date?: string; exercises?: WorkoutExercise[]; notes?: string; sessionMs?: number };
       if (draft.date) setDate(draft.date);
-      if (draft.exercises) setExercises(draft.exercises);
+      if (draft.exercises) setExercises(draft.exercises.map(ex => ({
+        ...(ex as ClientWorkoutExercise), // Cast to ClientWorkoutExercise
+        clientId: (ex as ClientWorkoutExercise).clientId || crypto.randomUUID(),
+        sets: (ex.sets || []).map(s => ({
+          ...(s as ClientWorkoutSet), // Cast to ClientWorkoutSet
+          clientId: (s as ClientWorkoutSet).clientId || crypto.randomUUID(),
+        })),
+      })));
       if (typeof draft.notes === 'string') setNotes(draft.notes);
       if (typeof draft.sessionMs === 'number' && draft.sessionMs > 0) {
         // 恢復主碼錶到草稿的經過時間
@@ -546,16 +582,91 @@ function WorkoutForm({ draftKey, initialData, onCancel, onSubmit }: {
     showToast(t('workout.exerciseRemoved'));
   };
 
+  const requestRemoveExercise = (idx: number) => {
+    setExerciseToDeleteIdx(idx);
+    setExerciseConfirmOpen(true);
+  };
+
+  const confirmRemoveExercise = () => {
+    if (exerciseToDeleteIdx !== null) {
+      removeExercise(exerciseToDeleteIdx);
+      setExerciseToDeleteIdx(null);
+    }
+    setExerciseConfirmOpen(false);
+  };
+
   // 動作名稱由常用清單帶入，前端不允許編輯
 
   const addSet = (exIdx: number) => {
-    setExercises((prev) => prev.map((ex, i) => i === exIdx ? { ...ex, sets: [...ex.sets, { weight: 0, reps: 8, completed: false }] } : ex));
+    setExercises((prev) => {
+      return prev.map((ex, i) => {
+        if (i !== exIdx) {
+          return ex;
+        }
+        const lastSet = ex.sets.length > 0 ? ex.sets[ex.sets.length - 1] : null;
+        const newSet = {
+          weight: lastSet ? lastSet.weight : 0,
+          reps: lastSet ? lastSet.reps : 8,
+          completed: false,
+          clientId: crypto.randomUUID(),
+        };
+        return { ...ex, sets: [...ex.sets, newSet] };
+      });
+    });
     showToast(t('workout.setAdded'));
   };
 
   const removeSet = (exIdx: number, setIdx: number) => {
-    setExercises((prev) => prev.map((ex, i) => i === exIdx ? { ...ex, sets: ex.sets.filter((_, s) => s !== setIdx) } : ex));
-    showToast(t('workout.setDeleted'));
+    setExercises((prev) => {
+      const newExercises = prev.map((ex, i) => {
+        if (i === exIdx) {
+          const deletedSet = ex.sets[setIdx];
+          // Add to recentlyDeletedSets
+          setRecentlyDeletedSets((current) => [...current, { exIdx, setIdx, data: deletedSet }]);
+          setUndoToastOpen(true);
+
+          // Clear any existing undo timer
+          if (undoTimerRef.current) {
+            clearTimeout(undoTimerRef.current);
+          }
+          // Start a new timer to clear the undo state after 5 seconds
+          undoTimerRef.current = window.setTimeout(() => {
+            setRecentlyDeletedSets([]);
+            setUndoToastOpen(false);
+          }, 5000) as unknown as number;
+
+          return { ...ex, sets: ex.sets.filter((_, s) => s !== setIdx) };
+        }
+        return ex;
+      });
+      return newExercises;
+    });
+  };
+
+  
+
+  const handleUndoSet = () => {
+    if (recentlyDeletedSets.length > 0) {
+      setExercises((prev) => {
+        const newExercises = [...prev];
+        // Undo in reverse order of deletion
+        recentlyDeletedSets.slice().reverse().forEach(deletedSetInfo => {
+          const targetExercise = newExercises[deletedSetInfo.exIdx];
+          if (targetExercise) {
+            const newSets = [...targetExercise.sets];
+            newSets.splice(deletedSetInfo.setIdx, 0, deletedSetInfo.data);
+            newExercises[deletedSetInfo.exIdx] = { ...targetExercise, sets: newSets };
+          }
+        });
+        return newExercises;
+      });
+      setRecentlyDeletedSets([]); // Clear all
+      setUndoToastOpen(false);
+      if (undoTimerRef.current) {
+        clearTimeout(undoTimerRef.current);
+      }
+      showToast(t('workout.setsRestored')); // Need new translation key (plural)
+    }
   };
 
   const updateSet = (exIdx: number, setIdx: number, field: 'weight' | 'reps' | 'completed' | 'restSeconds', value: number | boolean) => {
@@ -622,9 +733,9 @@ function WorkoutForm({ draftKey, initialData, onCancel, onSubmit }: {
   }, [exercises, currentRun, trainWatch, setGlobalRunning, restWatch, setGlobalRestRunning]);
 
   return (
-    <div className="bg-white rounded-2xl shadow-xl p-6">
+    <div className="bg-white rounded-2xl shadow-xl p-2">
 
-      <div className="space-y-6">
+      <div className="space-y-3">
         
         {/* 記錄日期 */}
         <div>
@@ -636,34 +747,35 @@ function WorkoutForm({ draftKey, initialData, onCancel, onSubmit }: {
           </div>
         </div>
 
+        {/* 運動項目 */}
         <div className="space-y-4">
           {exercises.map((ex, idx) => (
-            <div key={idx} className="bg-gray-50 rounded-lg p-4">
-              <div className="flex items-start gap-3 mb-3">
-                <div className="flex-1">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">{t('workout.exerciseName')}</label>
-                  <div className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-900 min-h-[42px] flex items-center">
-                    {ex.exerciseName ? getTranslatedName(`exercise.${ex.exerciseName}`, ex.exerciseName) : (
-                      <span className="text-gray-400">{t('workout.selectFromCommon')}</span>
-                    )}
-                  </div>
-                </div>
-                <div className="w-14">
-                  <label className="block text-sm font-medium text-transparent mb-2 select-none">{t('common.delete')}</label>
-                  {exercises.length > 1 && (
-                    <button type="button" onClick={() => removeExercise(idx)} className="inline-flex items-center justify-center h-12 w-14 rounded-md bg-red-500 hover:bg-red-600 text-white transition active:scale-95">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                    </button>
+            <div key={ex.clientId || idx} className="bg-gray-50 rounded-lg p-2">
+              <div className="flex items-center gap-3 mb-3">
+                <label className="text-sm font-medium text-gray-700">{t('workout.exerciseName')}</label>
+                <div className="flex-1 px-3 py-2 border border-gray-200 bg-white rounded-lg text-gray-900 min-h-[42px] flex items-center">
+                  {ex.exerciseName ? getTranslatedName(`exercise.${ex.exerciseName}`, ex.exerciseName) : (
+                    <span className="text-gray-400">{t('workout.selectFromCommon')}</span>
                   )}
                 </div>
+                {ex.bodyPart && (
+                  <span className="px-3 py-2 bg-blue-100 text-blue-800 rounded-lg text-sm font-medium">
+                    {t(`bodyPart.${ex.bodyPart}`)}
+                  </span>
+                )}
+                {exercises.length > 1 && (
+                  <button type="button" onClick={() => requestRemoveExercise(idx)} className="h-10 w-10 flex-shrink-0 inline-flex items-center justify-center rounded-lg bg-red-100 hover:bg-red-200 text-red-600 transition active:scale-95">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                )}
               </div>
 
               <div className="space-y-2">
                 {ex.sets.map((s, sIdx) => (
-                  <SwipeRow key={sIdx} onDelete={() => removeSet(idx, sIdx)} className="rounded-lg">
-                    <div className="flex items-center gap-3 w-full p-2">
+                  <SwipeRow key={s.clientId || sIdx} onDelete={() => removeSet(idx, sIdx)} className="rounded-lg">
+                    <div className="flex items-center gap-2 w-full p-2">
                       <button
                         type="button"
                         onClick={() => toggleComplete(idx, sIdx)}
@@ -683,7 +795,7 @@ function WorkoutForm({ draftKey, initialData, onCancel, onSubmit }: {
                         </svg>
                       </button>
 
-                      <div className="flex items-center gap-2 flex-1">
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
                         <label className="sr-only">{t('workout.weight')} ({t('workout.kg')})</label>
                         <input
                           type="number"
@@ -701,7 +813,7 @@ function WorkoutForm({ draftKey, initialData, onCancel, onSubmit }: {
                             }
                           }}
                           onChange={(e) => updateSet(idx, sIdx, 'weight', Number(e.target.value))}
-                          className="h-10 w-24 px-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-green-500 focus:border-transparent text-gray-900"
+                          className="h-10 w-full px-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-green-500 focus:border-transparent text-gray-900"
                         />
                         <span className="text-gray-600">{t('workout.kg')}</span>
 
@@ -723,27 +835,38 @@ function WorkoutForm({ draftKey, initialData, onCancel, onSubmit }: {
                             }
                           }}
                           onChange={(e) => updateSet(idx, sIdx, 'reps', Math.max(1, Number(e.target.value)))}
-                          className="h-10 w-20 px-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-green-500 focus:border-transparent text-gray-900"
+                          className="h-10 w-full px-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-green-500 focus:border-transparent text-gray-900"
                         />
                         <span className="text-gray-600">{t('workout.times')}</span>
                       </div>
 
                       {/* 組間/本組控制 */}
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setPendingStart({ exIdx: idx, setIdx: sIdx });
-                            setStartConfirmOpen(true);
-                          }}
-                          className="px-2 py-1 rounded text-xs font-medium bg-emerald-100 hover:bg-emerald-200 text-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                          title={t('workout.start')}
-                          disabled={!!currentRun || !!s.completed}
-                        >
-                          {t('workout.start')}
-                        </button>
-                        {workSecondsMap[`${idx}-${sIdx}`] !== undefined && workSecondsMap[`${idx}-${sIdx}`] > 0 && (
-                          <span className="text-xs text-gray-500">{t('workout.thisSetWorkout')} {formatSec(workSecondsMap[`${idx}-${sIdx}`])}</span>
+                      <div className="flex items-center justify-center gap-2 flex-shrink-0 w-20">
+                        {workSecondsMap[`${idx}-${sIdx}`] > 0 ? (
+                          <span className="flex items-center gap-1 text-sm text-gray-600 font-medium">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            {formatSec(workSecondsMap[`${idx}-${sIdx}`])}
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const isWorkoutStarted = trainWatch.totalSeconds > 0 || !!currentRun;
+                              if (isWorkoutStarted) {
+                                startSet(idx, sIdx);
+                              } else {
+                                setPendingStart({ exIdx: idx, setIdx: sIdx });
+                                setStartConfirmOpen(true);
+                              }
+                            }}
+                            className="px-2 py-1 rounded text-xs font-medium bg-emerald-100 hover:bg-emerald-200 text-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            title={t('workout.start')}
+                            disabled={!!currentRun || !!s.completed}
+                          >
+                            {t('workout.start')}
+                          </button>
                         )}
                       </div>
                       {/* 休息時間會在完成到下一次開始之間自動累計，不提供手動按鈕 */}
@@ -773,15 +896,7 @@ function WorkoutForm({ draftKey, initialData, onCancel, onSubmit }: {
             >
               {t('workout.addExerciseAction')}
             </button>
-          <div className="mt-2 grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              onClick={() => setQuickOpen(true)}
-              className="w-full py-2 rounded-lg bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium transition-colors"
-            >
-              {t('workout.addCustomExercise')}
-            </button>
-          </div>
+          
           <IOSDualWheelPicker
             open={dualOpen}
             title={t('workout.addExercise')}
@@ -789,7 +904,7 @@ function WorkoutForm({ draftKey, initialData, onCancel, onSubmit }: {
             exercises={(commonExercises || []).map(e => ({ _id: e._id, name: e.name, bodyPart: e.bodyPart }))}
             onClose={() => setDualOpen(false)}
             onConfirm={(ex) => {
-              setExercises((prev) => [...prev, { exerciseName: ex.name, bodyPart: ex.bodyPart, exerciseId: ex._id, sets: [{ weight: 0, reps: 8 }] }]);
+              setExercises((prev) => [...prev, { exerciseName: ex.name, bodyPart: ex.bodyPart, exerciseId: ex._id, sets: [{ weight: 0, reps: 8, clientId: crypto.randomUUID() }], clientId: crypto.randomUUID() }]);
               setDualOpen(false);
               showToast(`${t('workout.exerciseAdded')}：${ex.name}`);
               try { document.getElementById('exercise-bottom')?.scrollIntoView({ behavior: 'smooth' }); } catch { }
@@ -799,7 +914,7 @@ function WorkoutForm({ draftKey, initialData, onCancel, onSubmit }: {
             open={quickOpen}
             onClose={() => setQuickOpen(false)}
             onAdded={(ex) => {
-              setExercises((prev) => [...prev, { exerciseName: ex.name, bodyPart: ex.bodyPart, exerciseId: ex._id, sets: [{ weight: 0, reps: 8 }] }]);
+              setExercises((prev) => [...prev, { exerciseName: ex.name, bodyPart: ex.bodyPart, exerciseId: ex._id, sets: [{ weight: 0, reps: 8, clientId: crypto.randomUUID() }], clientId: crypto.randomUUID() }]);
               setQuickOpen(false);
               showToast(`${t('workout.customExerciseAdded')}：${ex.name}`);
               try { document.getElementById('exercise-bottom')?.scrollIntoView({ behavior: 'smooth' }); } catch { }
@@ -843,6 +958,18 @@ function WorkoutForm({ draftKey, initialData, onCancel, onSubmit }: {
       {toast && (
         <div className="fixed bottom-6 right-6 bg-gray-900/90 text-white px-4 py-2 rounded-lg shadow-lg text-sm z-50">
           {toast}
+        </div>
+      )}
+
+      {undoToastOpen && (
+        <div className="fixed top-6 left-1/2 transform -translate-x-1/2 bg-gray-900/90 text-white px-4 py-2 rounded-lg shadow-lg text-sm z-50 flex items-center gap-3">
+          <span>{t('workout.setsDeletedCount', { count: recentlyDeletedSets.length })}</span> {/* Need new translation key */}
+          <button
+            onClick={handleUndoSet}
+            className="px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white rounded-md text-xs font-medium transition-colors"
+          >
+            {t('common.undoAll')} {/* Need new translation key */}
+          </button>
         </div>
       )}
 
@@ -904,6 +1031,19 @@ function WorkoutForm({ draftKey, initialData, onCancel, onSubmit }: {
         }}
       />
 
+      {/* 刪除運動項目確認 iOS 風格 */}
+      <IOSAlertModal
+        open={exerciseConfirmOpen}
+        title={t('workout.confirmDeleteExerciseTitle')}
+        message={t('workout.confirmDeleteExerciseMessage')}
+        cancelText={t('common.cancel')}
+        confirmText={t('common.delete')}
+        onCancel={() => { setExerciseConfirmOpen(false); setExerciseToDeleteIdx(null); }}
+        onConfirm={confirmRemoveExercise}
+      />
+
+      
+
     </div>
   );
 }
@@ -915,6 +1055,3 @@ export default function WorkoutPage() {
     </Suspense>
   );
 }
-
-
-

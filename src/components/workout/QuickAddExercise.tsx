@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import IOSBottomSheet from '@/components/ios/IOSBottomSheet';
 import IOSWheelPicker from '@/components/ios/IOSWheelPicker';
 import { useAddUserExerciseMutation, useGetBodyPartsQuery } from '@/lib/workoutApi';
+import IOSAlertModal from '@/components/ios/IOSAlertModal';
 
 export default function QuickAddExercise({
   open,
@@ -21,6 +22,7 @@ export default function QuickAddExercise({
   const [name, setName] = useState('');
   const [bodyPartPickerOpen, setBodyPartPickerOpen] = useState(false);
   const [addUserExercise, { isLoading }] = useAddUserExerciseMutation();
+  const [alertInfo, setAlertInfo] = useState<{ open: boolean; title: string; message: string }>({ open: false, title: '', message: '' });
 
   useEffect(() => {
     if (!open) return;
@@ -31,55 +33,65 @@ export default function QuickAddExercise({
   const canSubmit = useMemo(() => name.trim().length >= 1 && !!selectedBodyPart, [name, selectedBodyPart]);
 
   return (
-    <IOSBottomSheet
-      open={open}
-      onClose={onClose}
-      title={t('workout.quickAddExercise')}
-      confirmText={isLoading ? t('workout.saving') : t('common.add')}
-      onConfirm={async () => {
-        if (!canSubmit) return;
-        try {
-          const res = await addUserExercise({ name: name.trim(), bodyPart: selectedBodyPart }).unwrap();
-          onAdded(res);
-          onClose();
-        } catch {
-          alert(t('workout.addFailed'));
-        }
-      }}
-      className="max-w-xl"
-    >
-      <div className="p-4 space-y-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">{t('workout.bodyPart')}</label>
-          <button
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 text-left flex items-center justify-between"
-            onClick={() => setBodyPartPickerOpen(true)}
-          >
-            <span>{t(`bodyPart.${selectedBodyPart}`)}</span>
-            <span className="text-gray-400">＞</span>
-          </button>
+    <>
+      <IOSBottomSheet
+        open={open}
+        onClose={onClose}
+        title={t('workout.quickAddExercise')}
+        confirmText={isLoading ? t('workout.saving') : t('common.add')}
+        onConfirm={async () => {
+          if (!canSubmit) return;
+          try {
+            const res = await addUserExercise({ name: name.trim(), bodyPart: selectedBodyPart }).unwrap();
+            onAdded(res);
+            onClose();
+          } catch (err: unknown) {
+            const message = (err as { data?: { message?: string } })?.data?.message || t('workout.addFailed');
+            setAlertInfo({ open: true, title: t('workout.addFailed'), message });
+          }
+        }}
+        className="max-w-xl"
+      >
+        <div className="p-4 space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">{t('workout.bodyPart')}</label>
+            <button
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 text-left flex items-center justify-between"
+              onClick={() => setBodyPartPickerOpen(true)}
+            >
+              <span>{t(`bodyPart.${selectedBodyPart}`)}</span>
+              <span className="text-gray-400">＞</span>
+            </button>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">{t('workout.exerciseName')}</label>
+            <input
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-black bg-white"
+              placeholder={t('workout.exerciseNamePlaceholder')}
+              value={name}
+              onChange={(ev) => setName(ev.target.value)}
+            />
+            <p className="text-xs text-gray-500 mt-1">{t('workout.exerciseNameNote')}</p>
+          </div>
         </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">{t('workout.exerciseName')}</label>
-          <input
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-black bg-white"
-            placeholder={t('workout.exerciseNamePlaceholder')}
-            value={name}
-            onChange={(ev) => setName(ev.target.value)}
-          />
-          <p className="text-xs text-gray-500 mt-1">{t('workout.exerciseNameNote')}</p>
-        </div>
-      </div>
 
-      <IOSWheelPicker
-        open={bodyPartPickerOpen}
-        title={t('workout.selectBodyPart')}
-        options={(bodyParts || []).map(bp => ({ label: t(`bodyPart.${bp}`), value: bp }))}
-        value={selectedBodyPart}
-        onChange={setSelectedBodyPart}
-        onClose={() => setBodyPartPickerOpen(false)}
+        <IOSWheelPicker
+          open={bodyPartPickerOpen}
+          title={t('workout.selectBodyPart')}
+          options={(bodyParts || []).map(bp => ({ label: t(`bodyPart.${bp}`), value: bp }))}
+          value={selectedBodyPart}
+          onChange={setSelectedBodyPart}
+          onClose={() => setBodyPartPickerOpen(false)}
+        />
+      </IOSBottomSheet>
+      <IOSAlertModal
+        open={alertInfo.open}
+        title={alertInfo.title}
+        message={alertInfo.message}
+        onConfirm={() => setAlertInfo({ ...alertInfo, open: false })}
+        onCancel={() => setAlertInfo({ ...alertInfo, open: false })}
       />
-    </IOSBottomSheet>
+    </>
   );
 }
 
