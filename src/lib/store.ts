@@ -4,15 +4,22 @@ import { configureStore } from '@reduxjs/toolkit';
 import { setupListeners } from '@reduxjs/toolkit/query';
 import { workoutApi } from './workoutApi';
 import { authApiRtk } from './authApi';
+import { nutritionApiRtk } from './nutritionApi';
 import authReducer from './authSlice';
 
 export const store = configureStore({
   reducer: {
     [workoutApi.reducerPath]: workoutApi.reducer,
     [authApiRtk.reducerPath]: authApiRtk.reducer,
+    [nutritionApiRtk.reducerPath]: nutritionApiRtk.reducer,
     auth: authReducer,
   },
-  middleware: (getDefault) => getDefault().concat(workoutApi.middleware, authApiRtk.middleware),
+  middleware: (getDefault) => 
+    getDefault().concat(
+      workoutApi.middleware, 
+      authApiRtk.middleware,
+      nutritionApiRtk.middleware
+    ),
 });
 
 export type RootState = ReturnType<typeof store.getState>;

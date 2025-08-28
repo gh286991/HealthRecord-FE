@@ -102,14 +102,17 @@ export interface NutritionRecord {
 }
 
 export interface FoodItem {
-  foodId: string;
+  foodId?: string;
   foodName: string;
-  quantity: number;
+  description?: string;
+  quantity?: number;
   calories: number;
   protein: number;
   carbohydrates: number;
   fat: number;
   fiber?: number;
+  sugar?: number;
+  sodium?: number;
   food?: Food;
 }
 
@@ -504,6 +507,37 @@ export const nutritionApi = {
   }> => {
     const response = await api.get(`/nutrition/stats/monthly/${year}/${month}`);
     return response.data;
+  },
+
+  // 獲取有飲食記錄的日期標記
+  getMarkedDates: async (year: number, month: number): Promise<string[]> => {
+    try {
+      const response = await api.get(`/diet-records/marked-dates/${year}/${month}`);
+      return response.data;
+    } catch (error) {
+      console.warn('無法獲取標記日期，使用本地資料:', error);
+      
+      // 從本地存儲獲取標記日期
+      const localRecords = localStorage.getItem('nutrition-records');
+      if (localRecords) {
+        const allRecords: NutritionRecord[] = JSON.parse(localRecords);
+        const targetMonthRecords = allRecords.filter(record => {
+          const recordDate = new Date(record.date);
+          return recordDate.getFullYear() === year && recordDate.getMonth() + 1 === month;
+        });
+        
+        // 提取唯一日期
+        const uniqueDates = new Set<string>();
+        targetMonthRecords.forEach(record => {
+          const dateStr = record.date.split('T')[0];
+          uniqueDates.add(dateStr);
+        });
+        
+        return Array.from(uniqueDates).sort();
+      }
+      
+      return [];
+    }
   },
 };
 

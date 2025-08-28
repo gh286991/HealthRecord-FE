@@ -3,9 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { tokenUtils, NutritionRecord } from '@/lib/api';
-import NutritionForm from '@/components/NutritionForm';
-import NutritionList from '@/components/NutritionList';
-import LocalModeNotice from '@/components/LocalModeNotice';
+import SimplifiedNutritionForm from '@/components/SimplifiedNutritionForm';
+import ImprovedNutritionList from '@/components/ImprovedNutritionList';
 import AppBackBar from '@/components/AppBackBar';
 
 type ViewMode = 'list' | 'add' | 'edit';
@@ -39,6 +38,8 @@ export default function NutritionPage() {
   const handleFormSuccess = () => {
     setViewMode('list');
     setEditingRecord(null);
+    // 強制重新加載記錄列表
+    window.location.reload();
   };
 
   const handleCancel = () => {
@@ -60,10 +61,8 @@ export default function NutritionPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-blue-50 to-purple-50">
       <div className="container mx-auto py-8">
-        <LocalModeNotice />
-        
         {viewMode === 'list' && (
-          <NutritionList 
+          <ImprovedNutritionList 
             onAddNew={handleAddNew}
             onEdit={handleEdit}
           />
@@ -73,14 +72,20 @@ export default function NutritionPage() {
           <div className="max-w-4xl mx-auto p-4">
             <AppBackBar onBack={handleCancel} />
             
-            <NutritionForm
+            <SimplifiedNutritionForm
               onSuccess={handleFormSuccess}
               onCancel={handleCancel}
+              recordId={editingRecord?._id}
               initialData={editingRecord ? {
                 date: editingRecord.date,
                 mealType: editingRecord.mealType,
-                foods: editingRecord.foods,
+                foods: editingRecord.foods.map(food => ({
+                  foodName: food.foodName,
+                  description: food.description || '',
+                  calories: food.calories,
+                })),
                 notes: editingRecord.notes,
+                photoUrl: editingRecord.photoUrl,
               } : undefined}
             />
           </div>
