@@ -120,6 +120,10 @@ export const workoutApi = createApi({
   }),
   tagTypes: ['WorkoutRecord', 'WorkoutSummary', 'Exercises'],
   endpoints: (builder) => ({
+    getMarkedDates: builder.query<string[], { year: number; month: number }>(({
+      query: ({ year, month }) => ({ url: '/workout-records/marked-dates', params: { year, month } }),
+      providesTags: [{ type: 'WorkoutSummary', id: 'LIST' }],
+    })),
     getWorkoutList: builder.query<DailyWorkoutResponse, { date?: string; type?: WorkoutType } | void>({
       query: (params) => ({ url: '/workout-records', params: params as Record<string, unknown> | undefined }),
       transformResponse: (response: unknown, _meta, arg) => {
@@ -241,7 +245,9 @@ export const workoutApi = createApi({
 });
 
 export const {
+  useGetMarkedDatesQuery,
   useGetWorkoutListQuery,
+  useLazyGetWorkoutListQuery,
   useGetWorkoutDailySummaryQuery,
   useGetWorkoutByIdQuery,
   useCreateWorkoutMutation,
