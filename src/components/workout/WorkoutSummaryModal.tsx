@@ -17,12 +17,14 @@ export default function WorkoutSummaryModal({
   open,
   data,
   onClose,
+  onAddAnother,
   encouragement,
 }: {
   open: boolean;
   data: SummaryData | null;
   encouragement?: string;
   onClose: () => void;
+  onAddAnother?: () => void;
 }) {
   const t = useTranslations();
   const { workoutMin, restMin, activeMin } = useMemo(() => {
@@ -106,7 +108,16 @@ export default function WorkoutSummaryModal({
           </table>
         </div>
 
-        <div className="mt-6 text-center">
+        <div className="mt-6 space-y-3">
+          {onAddAnother && (
+            <button
+              type="button"
+              className="w-full py-3 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white font-semibold active:scale-95 transition"
+              onClick={onAddAnother}
+            >
+              {t('workout.addAnotherWorkout')}
+            </button>
+          )}
           <button
             type="button"
             className="w-full py-3 rounded-2xl bg-[#0A84FF] hover:bg-[#0a7aeb] text-white font-semibold active:scale-95 transition"

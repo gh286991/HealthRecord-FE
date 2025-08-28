@@ -8,7 +8,7 @@ import IOSDatePicker from '@/components/ios/IOSDatePicker';
 import IOSDualWheelPicker from '@/components/ios/IOSDualWheelPicker';
 import IOSNumericKeypad from '@/components/ios/IOSNumericKeypad';
 import { tokenUtils } from '@/lib/api';
-import { WorkoutRecord, WorkoutExercise, WorkoutSet, useCreateWorkoutMutation, useGetWorkoutListQuery, useUpdateWorkoutMutation, useGetBodyPartsQuery, useGetCommonExercisesQuery, useDeleteWorkoutMutation } from '@/lib/workoutApi';
+import { WorkoutRecord, WorkoutExercise, WorkoutSet, WorkoutType, CardioData, useCreateWorkoutMutation, useGetWorkoutListQuery, useUpdateWorkoutMutation, useGetBodyPartsQuery, useGetCommonExercisesQuery, useDeleteWorkoutMutation } from '@/lib/workoutApi';
 import Button from '@/components/Button';
 import Card from '@/components/Card';
 import Toast from '@/components/Toast';
@@ -18,8 +18,11 @@ import { useWorkoutTimer } from '@/components/WorkoutTimerContext';
 import IOSAlertModal from '@/components/ios/IOSAlertModal';
 import WorkoutSummaryModal from '@/components/workout/WorkoutSummaryModal';
 import QuickAddExercise from '@/components/workout/QuickAddExercise';
+import WorkoutTypeSelector, { getWorkoutTypeInfo, getCardioTypeInfo } from '@/components/workout/WorkoutTypeSelector';
+import CardioForm from '@/components/workout/CardioForm';
 
 type ViewMode = 'list' | 'add' | 'edit';
+type SelectedWorkoutType = WorkoutType | null;
 
 // 輔助函數：只有在有翻譯鍵值時才使用翻譯，否則使用原始名稱
 const createTranslateExerciseName = (t: (key: string) => string) => (key: string, fallback: string) => {
@@ -70,6 +73,10 @@ function WorkoutPageContent() {
     workoutDurationSeconds?: number;
     totalRestSeconds?: number;
   }>(null);
+  
+  // 運動類型選擇相關狀態
+  const [workoutTypeSelectorOpen, setWorkoutTypeSelectorOpen] = useState(false);
+  const [selectedWorkoutType, setSelectedWorkoutType] = useState<SelectedWorkoutType>(null);
 
   useEffect(() => {
     const loggedIn = tokenUtils.isLoggedIn();
@@ -95,8 +102,16 @@ function WorkoutPageContent() {
 
   const handleAdd = () => {
     setEditingRecord(null);
+    setSelectedWorkoutType(null);
+    setWorkoutTypeSelectorOpen(true);
+  };
+
+  const handleWorkoutTypeSelect = (type: WorkoutType) => {
+    setSelectedWorkoutType(type);
     setViewMode('add');
-    try { router.push('/workout?form=add'); } catch { }
+    try { 
+      router.push(`/workout?form=add&type=${type}`); 
+    } catch { }
   };
 
   const handleEdit = (r: WorkoutRecord) => {
@@ -132,6 +147,7 @@ function WorkoutPageContent() {
   const handleCancel = () => {
     setViewMode('list');
     setEditingRecord(null);
+    setSelectedWorkoutType(null);
     try { router.push('/workout'); } catch { }
   };
 
@@ -140,18 +156,35 @@ function WorkoutPageContent() {
       const ensuredTotalRestSeconds = typeof payload.totalRestSeconds === 'number'
         ? payload.totalRestSeconds
         : (payload.exercises || []).reduce((acc, ex) => acc + (ex.sets || []).reduce((s, set) => s + (set.restSeconds || 0), 0), 0);
-      const bodyWithDurations = { ...payload, totalRestSeconds: ensuredTotalRestSeconds };
+      
+      // 使用新的 API 格式，同時保持向後兼容
+      const body = {
+        date: payload.date,
+        type: WorkoutType.Resistance,
+        duration: payload.workoutDurationSeconds ? Math.floor(payload.workoutDurationSeconds / 60) : undefined, // 轉換為分鐘
+        notes: payload.notes,
+        resistanceData: {
+          exercises: payload.exercises,
+          totalRestSeconds: ensuredTotalRestSeconds,
+        },
+        // 向後兼容的舊欄位
+        exercises: payload.exercises,
+        workoutDurationSeconds: payload.workoutDurationSeconds,
+        totalRestSeconds: ensuredTotalRestSeconds,
+      };
+
       if (editingRecord) {
-        await updateWorkout({ id: editingRecord._id, body: bodyWithDurations }).unwrap();
+        await updateWorkout({ id: editingRecord._id, body }).unwrap();
         await fetchData();
         setViewMode('list');
         setEditingRecord(null);
+        setSelectedWorkoutType(null);
         try { router.push('/workout'); } catch { }
         setToastVariant('success');
         setToastMsg(t('workout.recordSaved'));
         setToastOpen(true);
       } else {
-        await createWorkout(bodyWithDurations).unwrap();
+        await createWorkout(body).unwrap();
         await fetchData();
         const perExercise = (payload.exercises || []).map(ex => {
           const sets = ex.sets?.length || 0;
@@ -186,16 +219,60 @@ function WorkoutPageContent() {
     }
   };
 
+  // 處理有氧運動提交
+  const handleCardioSubmit = async (payload: {
+    date: string;
+    duration: number;
+    cardioData: CardioData;
+    notes?: string;
+  }) => {
+    try {
+      const body = {
+        date: payload.date,
+        type: WorkoutType.Cardio,
+        duration: payload.duration,
+        cardioData: payload.cardioData,
+        notes: payload.notes,
+      };
+
+      if (editingRecord) {
+        await updateWorkout({ id: editingRecord._id, body }).unwrap();
+      } else {
+        await createWorkout(body).unwrap();
+      }
+
+      await fetchData();
+      setViewMode('list');
+      setEditingRecord(null);
+      setSelectedWorkoutType(null);
+      try { router.push('/workout'); } catch { }
+      setToastVariant('success');
+      setToastMsg(t('workout.recordSaved'));
+      setToastOpen(true);
+    } catch (e) {
+      console.error('Failed to save cardio record', e);
+      setToastVariant('error');
+      setToastMsg(t('workout.saveFailed'));
+      setToastOpen(true);
+    }
+  };
+
   // 由 URL 搜尋參數決定畫面模式，確保 Navbar 返回能回到列表
   useEffect(() => {
     const form = searchParams?.get('form');
+    const type = searchParams?.get('type') as WorkoutType | null;
+    
     if (form === 'add') {
       setViewMode('add');
       setEditingRecord(null);
+      if (type && Object.values(WorkoutType).includes(type)) {
+        setSelectedWorkoutType(type);
+      }
     } else if (form === 'edit') {
       setViewMode('edit');
     } else {
       setViewMode('list');
+      setSelectedWorkoutType(null);
     }
   }, [searchParams]);
 
@@ -265,72 +342,159 @@ function WorkoutPageContent() {
                   </Button>
                 </Card>
               ) : (
-                (listData?.records ?? []).map((r: WorkoutRecord) => (
-                  <Card key={r._id} className="overflow-hidden hover:shadow-[0_12px_28px_rgba(0,0,0,.06)] transition-shadow duration-200">
-                    <div className="bg-gray-50 px-6 py-4 border-b border-gray-100 flex justify-between items-center">
-                      <div className="text-sm text-gray-600">{new Date(r.createdAt).toLocaleString('zh-TW')}</div>
-                      <div className="space-x-2">
-                        <button onClick={() => handleEdit(r)} className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                          </svg>
-                        </button>
-                        <button onClick={() => requestDelete(r._id)} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                        </button>
-                      </div>
-                    </div>
-                    <div className="p-6 space-y-4">
-                      {r.exercises.map((ex: WorkoutExercise, idx: number) => (
-                        <div key={idx} className="border rounded-lg p-4">
-                          <div className="font-semibold text-gray-900 mb-2">{getTranslatedName(`exercise.${ex.exerciseName}`, ex.exerciseName)}</div>
-                          <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 text-sm text-gray-700">
-                            {ex.sets.map((s: { weight: number; reps: number }, sIdx: number) => (
-                              <div key={sIdx} className="bg-gray-50 rounded p-2 text-center">
-                                <div>{s.weight} kg</div>
-                                <div className="text-gray-500">x {s.reps}</div>
+                <>
+                  {(listData?.records ?? []).map((r: WorkoutRecord) => {
+                    const workoutType = r.type || WorkoutType.Resistance;
+                    const typeInfo = getWorkoutTypeInfo(workoutType, t);
+                    
+                    return (
+                      <Card key={r._id} className="overflow-hidden hover:shadow-[0_12px_28px_rgba(0,0,0,.06)] transition-shadow duration-200">
+                        <div className="bg-gray-50 px-6 py-4 border-b border-gray-100 flex justify-between items-center">
+                          <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-2">
+                              <span className="text-lg">{typeInfo.icon}</span>
+                              <span className="text-sm font-medium text-gray-700">{typeInfo.name}</span>
+                            </div>
+                            <div className="text-sm text-gray-600">{new Date(r.createdAt).toLocaleString('zh-TW')}</div>
+                          </div>
+                          <div className="space-x-2">
+                            <button onClick={() => handleEdit(r)} className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                              </svg>
+                            </button>
+                            <button onClick={() => requestDelete(r._id)} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+                        
+                        <div className="p-6 space-y-4">
+                          {/* 根據運動類型顯示不同內容 */}
+                          {workoutType === WorkoutType.Cardio && r.cardioData ? (
+                            // 有氧運動顯示
+                            <div className="space-y-4">
+                              <div className="flex items-center gap-3 p-4 bg-green-50 rounded-lg">
+                                <span className="text-xl">{getCardioTypeInfo(r.cardioData.cardioType, t).icon}</span>
+                                <div className="flex-1">
+                                  <div className="font-semibold text-gray-900">{getCardioTypeInfo(r.cardioData.cardioType, t).name}</div>
+                                  <div className="text-sm text-gray-600">
+                                    {r.duration && `${r.duration} ${t('common.minutes')}`}
+                                    {r.cardioData.distance && ` • ${r.cardioData.distance} ${t('common.kilometers')}`}
+                                  </div>
+                                </div>
                               </div>
-                            ))}
-                          </div>
+                              
+                              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                                {r.duration && (
+                                  <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
+                                    <div className="text-xl font-bold text-green-600">{r.duration}</div>
+                                    <div className="text-xs text-gray-600 mt-1">{t('common.minutes')}</div>
+                                  </div>
+                                )}
+                                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">
+                                  <div className="text-xl font-bold text-blue-600">{r.cardioData.intensity}/10</div>
+                                  <div className="text-xs text-gray-600 mt-1">{t('cardio.intensity')}</div>
+                                </div>
+                                {r.cardioData.distance && (
+                                  <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 text-center">
+                                    <div className="text-xl font-bold text-orange-600">{r.cardioData.distance}</div>
+                                    <div className="text-xs text-gray-600 mt-1">{t('common.kilometers')}</div>
+                                  </div>
+                                )}
+                                {r.cardioData.averageHeartRate && (
+                                  <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-center">
+                                    <div className="text-xl font-bold text-red-600">{r.cardioData.averageHeartRate}</div>
+                                    <div className="text-xs text-gray-600 mt-1">bpm</div>
+                                  </div>
+                                )}
+                              </div>
+                              
+                              {r.cardioData.location && (
+                                <div className="text-sm text-gray-600">
+                                  <span className="font-medium">{t('cardio.location')}：</span>
+                                  {r.cardioData.location}
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            // 重訓或其他運動類型顯示（保持原有邏輯）
+                            <div className="space-y-4">
+                              {(r.exercises || r.resistanceData?.exercises || []).map((ex: WorkoutExercise, idx: number) => (
+                                <div key={idx} className="border rounded-lg p-4">
+                                  <div className="font-semibold text-gray-900 mb-2">{getTranslatedName(`exercise.${ex.exerciseName}`, ex.exerciseName)}</div>
+                                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 text-sm text-gray-700">
+                                    {ex.sets.map((s: { weight: number; reps: number }, sIdx: number) => (
+                                      <div key={sIdx} className="bg-gray-50 rounded p-2 text-center">
+                                        <div>{s.weight} kg</div>
+                                        <div className="text-gray-500">x {s.reps}</div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              ))}
+                              <div className="grid grid-cols-3 sm:grid-cols-6 gap-4">
+                                <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
+                                  <div className="text-xl font-bold text-green-600">{r.resistanceData?.totalVolume || r.totalVolume || 0}</div>
+                                  <div className="text-xs text-gray-600 mt-1">{t('workout.totalVolume')}</div>
+                                </div>
+                                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">
+                                  <div className="text-xl font-bold text-blue-600">{r.resistanceData?.totalSets || r.totalSets || 0}</div>
+                                  <div className="text-xs text-gray-600 mt-1">組數</div>
+                                </div>
+                                <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 text-center">
+                                  <div className="text-xl font-bold text-orange-600">{r.resistanceData?.totalReps || r.totalReps || 0}</div>
+                                  <div className="text-xs text-gray-600 mt-1">{t('workout.totalReps')}</div>
+                                </div>
+                                {r.duration && (
+                                  <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 text-center col-span-3 sm:col-span-1">
+                                    <div className="text-xl font-bold text-purple-600">{r.duration} 分</div>
+                                    <div className="text-xs text-gray-600 mt-1">{t('workout.totalTime')}</div>
+                                  </div>
+                                )}
+                                {typeof r.workoutDurationSeconds === 'number' && r.workoutDurationSeconds > 0 && (
+                                  <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 text-center col-span-3 sm:col-span-1">
+                                    <div className="text-xl font-bold text-purple-600">{Math.floor((r.workoutDurationSeconds || 0) / 60)} 分</div>
+                                    <div className="text-xs text-gray-600 mt-1">{t('workout.totalTime')}</div>
+                                  </div>
+                                )}
+                                {typeof r.totalRestSeconds === 'number' && r.totalRestSeconds > 0 && (
+                                  <div className="bg-rose-50 border border-rose-200 rounded-lg p-4 text-center col-span-3 sm:col-span-1">
+                                    <div className="text-xl font-bold text-rose-600">{Math.floor((r.totalRestSeconds || 0) / 60)} 分</div>
+                                    <div className="text-xs text-gray-600 mt-1">{t('workout.restTime')}</div>
+                                  </div>
+                                )}
+                                {typeof r.workoutDurationSeconds === 'number' && r.workoutDurationSeconds > 0 && (
+                                  <div className="bg-teal-50 border border-teal-200 rounded-lg p-4 text-center col-span-3 sm:col-span-1">
+                                    <div className="text-xl font-bold text-teal-600">{Math.max(0, Math.floor((r.workoutDurationSeconds - (r.totalRestSeconds || 0)) / 60))} 分</div>
+                                    <div className="text-xs text-gray-600 mt-1">{t('workout.workoutTime')}</div>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                          
+                          {/* 備註顯示 */}
+                          {r.notes && (
+                            <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
+                              <span className="font-medium">{t('workout.notes')}：</span>
+                              {r.notes}
+                            </div>
+                          )}
                         </div>
-                      ))}
-                      <div className="grid grid-cols-3 sm:grid-cols-6 gap-4">
-                        <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
-                          <div className="text-xl font-bold text-green-600">{r.totalVolume}</div>
-                          <div className="text-xs text-gray-600 mt-1">{t('workout.totalVolume')}</div>
-                        </div>
-                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">
-                          <div className="text-xl font-bold text-blue-600">{r.totalSets}</div>
-                          <div className="text-xs text-gray-600 mt-1">組數</div>
-                        </div>
-                        <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 text-center">
-                          <div className="text-xl font-bold text-orange-600">{r.totalReps}</div>
-                          <div className="text-xs text-gray-600 mt-1">{t('workout.totalReps')}</div>
-                        </div>
-                        {typeof r.workoutDurationSeconds === 'number' && r.workoutDurationSeconds > 0 && (
-                          <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 text-center col-span-3 sm:col-span-1">
-                            <div className="text-xl font-bold text-purple-600">{Math.floor((r.workoutDurationSeconds || 0) / 60)} 分</div>
-                            <div className="text-xs text-gray-600 mt-1">{t('workout.totalTime')}</div>
-                          </div>
-                        )}
-                        {typeof r.totalRestSeconds === 'number' && r.totalRestSeconds > 0 && (
-                          <div className="bg-rose-50 border border-rose-200 rounded-lg p-4 text-center col-span-3 sm:col-span-1">
-                            <div className="text-xl font-bold text-rose-600">{Math.floor((r.totalRestSeconds || 0) / 60)} 分</div>
-                            <div className="text-xs text-gray-600 mt-1">{t('workout.restTime')}</div>
-                          </div>
-                        )}
-                        {typeof r.workoutDurationSeconds === 'number' && r.workoutDurationSeconds > 0 && (
-                          <div className="bg-teal-50 border border-teal-200 rounded-lg p-4 text-center col-span-3 sm:col-span-1">
-                            <div className="text-xl font-bold text-teal-600">{Math.max(0, Math.floor((r.workoutDurationSeconds - (r.totalRestSeconds || 0)) / 60))} 分</div>
-                            <div className="text-xs text-gray-600 mt-1">{t('workout.workoutTime')}</div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
+                      </Card>
+                    );
+                  })}
+                  
+                  {/* 新增運動卡片 - 在有記錄時顯示 */}
+                  <Card className="p-8 text-center border-2 border-dashed border-gray-300 hover:border-emerald-400 hover:bg-emerald-50/30 transition-all duration-200 cursor-pointer" onClick={handleAdd}>
+                    <div className="text-emerald-500 text-4xl mb-4">➕</div>
+                    <h3 className="text-lg font-medium text-gray-700 mb-2">{t('workout.addAnotherWorkout')}</h3>
+                    <p className="text-sm text-gray-500">{t('workout.continueTraining')}</p>
                   </Card>
-                ))
+                </>
               )}
             </div>
           </div>
@@ -338,13 +502,33 @@ function WorkoutPageContent() {
 
         {(viewMode === 'add' || viewMode === 'edit') && (
           <div className="max-w-4xl mx-auto">
-            {/* 返回由 Nav 提供，不再使用懸浮 BackBar */}
-            <WorkoutForm
-              draftKey={editingRecord ? `workout_draft_edit_${editingRecord._id}` : `workout_draft_add_${selectedDate}`}
-              initialData={editingRecord ? { recordId: editingRecord._id, date: editingRecord.date.split('T')[0], exercises: editingRecord.exercises, notes: editingRecord.notes } : undefined}
-              onCancel={handleCancel}
-              onSubmit={handleSubmit}
-            />
+            {/* 根據運動類型顯示不同的表單 */}
+            {(selectedWorkoutType === WorkoutType.Cardio || editingRecord?.type === WorkoutType.Cardio) ? (
+              <CardioForm
+                initialData={editingRecord ? {
+                  date: editingRecord.date.split('T')[0],
+                  duration: editingRecord.duration,
+                  cardioData: editingRecord.cardioData!,
+                  notes: editingRecord.notes,
+                } : {
+                  date: selectedDate,
+                }}
+                onSubmit={handleCardioSubmit}
+                onCancel={handleCancel}
+              />
+            ) : (
+              <WorkoutForm
+                draftKey={editingRecord ? `workout_draft_edit_${editingRecord._id}` : `workout_draft_add_${selectedDate}`}
+                initialData={editingRecord ? { 
+                  recordId: editingRecord._id, 
+                  date: editingRecord.date.split('T')[0], 
+                  exercises: editingRecord.exercises || editingRecord.resistanceData?.exercises || [], 
+                  notes: editingRecord.notes 
+                } : undefined}
+                onCancel={handleCancel}
+                onSubmit={handleSubmit}
+              />
+            )}
           </div>
         )}
       </div>
@@ -366,8 +550,22 @@ function WorkoutPageContent() {
           setSummaryOpen(false);
           setViewMode('list');
           setEditingRecord(null);
+          setSelectedWorkoutType(null);
           try { router.push('/workout'); } catch { }
         }}
+        onAddAnother={() => {
+          setSummaryOpen(false);
+          setEditingRecord(null);
+          setSelectedWorkoutType(null);
+          setWorkoutTypeSelectorOpen(true);
+        }}
+      />
+      
+      {/* 運動類型選擇器 */}
+      <WorkoutTypeSelector
+        open={workoutTypeSelectorOpen}
+        onClose={() => setWorkoutTypeSelectorOpen(false)}
+        onSelect={handleWorkoutTypeSelect}
       />
     </div>
   );

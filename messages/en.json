@@ -101,7 +101,7 @@
     "times": "times",
     "start": "Start",
     "addSet": "Add Set",
-    "addExerciseAction": "+ Exercise",
+    "addExerciseAction": "Select Exercise",
     "addCustomExercise": "+ Custom Exercise",
     "notes": "Notes",
     "notesPlaceholder": "Feeling, pace, etc...",
@@ -126,7 +126,7 @@
     "customExerciseAdded": "Custom added",
     "selectFromCommon": "Please select from common exercises and ensure each set has at least 1 rep",
     "thisSetWorkout": "This set workout",
-    "quickAddExercise": "Quick Add Exercise",
+    
     "saving": "Saving...",
     "addFailed": "Add failed, name may already exist in your list",
     "bodyPart": "Body Part",
@@ -144,6 +144,8 @@
     "setDeletedUndo": "Set deleted",
     "setRestored": "Set restored",
     "setsRestored": "Sets restored",
-    "setsDeletedCount": "{count} sets deleted"
+    "setsDeletedCount": "{count} sets deleted",
+    "addAnotherWorkout": "Add Another Workout",
+    "continueTraining": "Continue your training"
   }
 }

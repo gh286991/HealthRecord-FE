@@ -18,7 +18,11 @@
     "ok": "確定",
     "select": "選擇",
     "undo": "撤銷",
-    "undoAll": "撤銷全部"
+    "undoAll": "撤銷全部",
+    "minutes": "分鐘",
+    "kilometers": "公里",
+    "quickSelect": "快選",
+    "comingSoon": "即將推出"
   },
   "bodyPart": {
     "chest": "胸部",
@@ -101,7 +105,7 @@
     "times": "次",
     "start": "開始",
     "addSet": "新增一組",
-    "addExerciseAction": "+ 動作",
+    "addExerciseAction": "選擇動作",
     "addCustomExercise": "+ 自訂動作",
     "notes": "備註",
     "notesPlaceholder": "感受、節奏、等...",
@@ -144,6 +148,62 @@
     "setDeletedUndo": "組數已刪除",
     "setRestored": "組數已恢復",
     "setsRestored": "組數已恢復",
-    "setsDeletedCount": "已刪除 {count} 組"
+    "setsDeletedCount": "已刪除 {count} 組",
+    "selectWorkoutType": "選擇運動類型",
+    "addAnotherWorkout": "繼續新增運動",
+    "continueTraining": "繼續訓練吧"
+  },
+  "workoutType": {
+    "resistance": "重訓",
+    "cardio": "有氧運動",
+    "flexibility": "瑜伽/伸展",
+    "swimming": "游泳",
+    "sports": "球類運動",
+    "other": "其他",
+    "resistanceDesc": "重量訓練、肌力訓練",
+    "cardioDesc": "跑步、騎車、有氧運動",
+    "flexibilityDesc": "瑜伽、伸展、放鬆",
+    "swimmingDesc": "游泳訓練",
+    "sportsDesc": "球類運動、團體運動"
+  },
+  "cardioType": {
+    "running": "跑步",
+    "cycling": "騎車",
+    "walking": "健走",
+    "elliptical": "橢圓機",
+    "rowing": "划船機",
+    "treadmill": "跑步機",
+    "stairclimber": "階梯機",
+    "other": "其他"
+  },
+  "intensity": {
+    "light": "輕鬆",
+    "moderate": "中等",
+    "vigorous": "激烈",
+    "maximum": "最大強度"
+  },
+  "cardio": {
+    "title": "有氧運動記錄",
+    "cardioType": "運動類型",
+    "duration": "持續時間",
+    "intensity": "運動強度",
+    "distance": "距離",
+    "averageHeartRate": "平均心率",
+    "maxHeartRate": "最大心率",
+    "caloriesBurned": "消耗卡路里",
+    "location": "運動地點",
+    "optionalFields": "可選欄位",
+    "selectCardioType": "選擇有氧運動類型",
+    "selectDuration": "選擇持續時間",
+    "selectIntensity": "選擇運動強度",
+    "enterDuration": "輸入持續時間（分鐘）",
+    "enterDistance": "輸入距離（公里）",
+    "enterHeartRate": "輸入心率（bpm）",
+    "distancePlaceholder": "例：5.0",
+    "heartRatePlaceholder": "例：150",
+    "locationPlaceholder": "例：中央公園、健身房",
+    "notesPlaceholder": "今天狀態不錯、膝蓋有點痛...",
+    "fillRequired": "請填寫必要欄位",
+    "saveRecord": "儲存記錄"
   }
 }
