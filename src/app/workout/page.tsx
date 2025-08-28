@@ -900,6 +900,7 @@ function WorkoutForm({ draftKey, initialData, onCancel, onSubmit }: {
           <IOSDualWheelPicker
             open={dualOpen}
             title={t('workout.addExercise')}
+            hideTitle={true}
             bodyParts={(bodyParts || [])}
             exercises={(commonExercises || []).map(e => ({ _id: e._id, name: e.name, bodyPart: e.bodyPart }))}
             onClose={() => setDualOpen(false)}

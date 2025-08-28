@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import IOSBottomSheet from '@/components/ios/IOSBottomSheet';
-import IOSWheelPicker from '@/components/ios/IOSWheelPicker';
 import { useAddUserExerciseMutation, useGetBodyPartsQuery } from '@/lib/workoutApi';
 import IOSAlertModal from '@/components/ios/IOSAlertModal';
 
@@ -11,24 +10,25 @@ export default function QuickAddExercise({
   open,
   onClose,
   onAdded,
+  initialBodyPart,
 }: {
   open: boolean;
   onClose: () => void;
   onAdded: (ex: { _id: string; name: string; bodyPart: string }) => void;
+  initialBodyPart?: string;
 }) {
   const t = useTranslations();
   const { data: bodyParts = [] } = useGetBodyPartsQuery();
   const [selectedBodyPart, setSelectedBodyPart] = useState<string>('chest');
   const [name, setName] = useState('');
-  const [bodyPartPickerOpen, setBodyPartPickerOpen] = useState(false);
   const [addUserExercise, { isLoading }] = useAddUserExerciseMutation();
   const [alertInfo, setAlertInfo] = useState<{ open: boolean; title: string; message: string }>({ open: false, title: '', message: '' });
 
   useEffect(() => {
     if (!open) return;
     setName('');
-    setSelectedBodyPart((bodyParts || [])[0] || 'chest');
-  }, [open, bodyParts]);
+    setSelectedBodyPart(initialBodyPart || (bodyParts || [])[0] || 'chest');
+  }, [open, bodyParts, initialBodyPart]);
 
   const canSubmit = useMemo(() => name.trim().length >= 1 && !!selectedBodyPart, [name, selectedBodyPart]);
 
@@ -55,13 +55,9 @@ export default function QuickAddExercise({
         <div className="p-4 space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">{t('workout.bodyPart')}</label>
-            <button
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 text-left flex items-center justify-between"
-              onClick={() => setBodyPartPickerOpen(true)}
-            >
-              <span>{t(`bodyPart.${selectedBodyPart}`)}</span>
-              <span className="text-gray-400">＞</span>
-            </button>
+            <div className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-700">
+              {t(`bodyPart.${selectedBodyPart}`)}
+            </div>
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">{t('workout.exerciseName')}</label>
@@ -75,14 +71,6 @@ export default function QuickAddExercise({
           </div>
         </div>
 
-        <IOSWheelPicker
-          open={bodyPartPickerOpen}
-          title={t('workout.selectBodyPart')}
-          options={(bodyParts || []).map(bp => ({ label: t(`bodyPart.${bp}`), value: bp }))}
-          value={selectedBodyPart}
-          onChange={setSelectedBodyPart}
-          onClose={() => setBodyPartPickerOpen(false)}
-        />
       </IOSBottomSheet>
       <IOSAlertModal
         open={alertInfo.open}

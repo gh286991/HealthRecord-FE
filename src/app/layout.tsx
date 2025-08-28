@@ -5,6 +5,7 @@ import Navigation from "@/components/Navigation";
 import PWAInstallPrompt from "@/components/PWAInstallPrompt";
 import Providers from "@/components/Providers";
 import { NextIntlClientProvider } from 'next-intl';
+import PreventBounce from "@/components/PreventBounce";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -95,6 +96,7 @@ export default async function RootLayout({
             <Navigation />
             {children}
             <PWAInstallPrompt />
+            <PreventBounce />
           </Providers>
         </NextIntlClientProvider>
       </body>

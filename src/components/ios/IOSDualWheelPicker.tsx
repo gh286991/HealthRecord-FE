@@ -15,15 +15,16 @@ export interface DualExerciseItem {
 interface IOSDualWheelPickerProps {
   open: boolean;
   title?: string;
+  hideTitle?: boolean;
   bodyParts: string[];
   exercises: DualExerciseItem[]; // 全部常用動作
   onClose: () => void;
   onConfirm: (exercise: DualExerciseItem) => void;
 }
 
-export default function IOSDualWheelPicker({ open, title, bodyParts, exercises, onClose, onConfirm }: IOSDualWheelPickerProps) {
+export default function IOSDualWheelPicker({ open, title, hideTitle, bodyParts, exercises, onClose, onConfirm }: IOSDualWheelPickerProps) {
   const t = useTranslations();
-  const defaultTitle = title || t('common.select');
+  const defaultTitle = (!hideTitle) ? (title || t('common.select')) : '';
   
   // 輔助函數：只有在有翻譯鍵值時才使用翻譯，否則使用原始名稱
   const getTranslatedName = (key: string, fallback: string) => {
@@ -61,6 +62,13 @@ export default function IOSDualWheelPicker({ open, title, bodyParts, exercises, 
       label: getTranslatedName(`exercise.${e.name}`, e.name),
       value: e._id
     }));
+    
+    // 添加自訂選項到最後
+    opts.push({
+      label: t('common.custom'),
+      value: 'custom'
+    });
+    
     if (opts.length > 0 && !opts.find(o => o.value === selectedExerciseId)) {
       setSelectedExerciseId(opts[0].value);
     }
@@ -84,19 +92,17 @@ export default function IOSDualWheelPicker({ open, title, bodyParts, exercises, 
         onClose={onClose}
         headerContent={
           <>
-            {defaultTitle} · <span className="text-[#007AFF]">{headerLabel}</span>
-            <button
-              className="ml-2 text-[#007AFF] text-sm align-middle"
-              onClick={() => setQuickOpen(true)}
-            >
-              + {t('common.custom')}
-            </button>
+            {defaultTitle} {defaultTitle && '·'} <span className="text-[#007AFF]">{headerLabel}</span>
           </>
         }
         onConfirm={() => {
-          const ex = allExercises.find(e => e._id === selectedExerciseId);
-          if (ex) onConfirm(ex);
-          onClose();
+          if (selectedExerciseId === 'custom') {
+            setQuickOpen(true);
+          } else {
+            const ex = allExercises.find(e => e._id === selectedExerciseId);
+            if (ex) onConfirm(ex);
+            onClose();
+          }
         }}
       >
         <div className="bg-gray-50 p-4">
@@ -122,10 +128,10 @@ export default function IOSDualWheelPicker({ open, title, bodyParts, exercises, 
       <QuickAddExercise
         open={quickOpen}
         onClose={() => setQuickOpen(false)}
+        initialBodyPart={selectedBodyPart}
         onAdded={(ex) => {
           // 把新項目加入右側清單，預設選中，保持面板開啟
           setAllExercises((prev) => [...prev, ex]);
-          setSelectedBodyPart(ex.bodyPart || '');
           setSelectedExerciseId(ex._id);
           setQuickOpen(false);
         }}

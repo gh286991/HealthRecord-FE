@@ -50,12 +50,41 @@ function NavigationContent() {
   };
 
   const MenuItems = ({ stagger = false }: { stagger?: boolean }) => {
-    const base = `block sm:inline-block px-3 py-2 rounded-md text-sm font-medium transition-all duration-150`;
+    const base = stagger 
+      ? `block w-full px-4 py-2 text-lg font-medium transition-all duration-150 border-b border-gray-100 last:border-b-0`
+      : `block sm:inline-block px-3 py-2 rounded-md text-sm font-medium transition-all duration-150`;
     const enter = animIn ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-1';
     const item = (i: number, cls: string) => ({
       className: `${base} ${cls} ${stagger ? enter : ''}`,
       style: stagger ? { transitionDelay: `${i * 30}ms` } as React.CSSProperties : undefined,
     });
+    if (stagger) {
+      return (
+        <>
+          {isLoggedIn ? (
+            <>
+              <div className="flex flex-col">
+                <Link href="/nutrition" onClick={handleNavItemClick} {...item(0, 'text-gray-700 hover:text-gray-900 hover:bg-gray-50')}>飲食紀錄</Link>
+                <Link href="/workout" onClick={handleNavItemClick} {...item(1, 'text-gray-700 hover:text-gray-900 hover:bg-gray-50')}>健身紀錄</Link>
+                <Link href="/workout/exercises" onClick={handleNavItemClick} {...item(2, 'text-gray-700 hover:text-gray-900 hover:bg-gray-50')}>動作管理</Link>
+                <Link href="/profile" onClick={handleNavItemClick} {...item(3, 'text-gray-700 hover:text-gray-900 hover:bg-gray-50')}>個人資料</Link>
+              </div>
+              <div className="mt-auto pb-8 px-4">
+                <div className={`${enter}`} style={{ transitionDelay: `${4 * 30}ms` }}>
+                  <Button onClick={handleLogout} className="!px-6 !py-3 !text-lg w-full !rounded-xl" variant="secondary">登出</Button>
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <Link href="/login" onClick={handleNavItemClick} {...item(0, 'text-gray-700 hover:text-gray-900 hover:bg-gray-50')}>登入</Link>
+              <Link href="/register" onClick={handleNavItemClick} {...item(1, 'bg-blue-600 hover:bg-blue-700 text-white')}>註冊</Link>
+            </>
+          )}
+        </>
+      );
+    }
+    
     return (
       <>
         {isLoggedIn ? (
@@ -64,7 +93,7 @@ function NavigationContent() {
             <Link href="/workout" onClick={handleNavItemClick} {...item(1, 'text-gray-700 hover:text-gray-900')}>健身紀錄</Link>
             <Link href="/workout/exercises" onClick={handleNavItemClick} {...item(2, 'text-gray-700 hover:text-gray-900')}>動作管理</Link>
             <Link href="/profile" onClick={handleNavItemClick} {...item(3, 'text-gray-700 hover:text-gray-900')}>個人資料</Link>
-            <div className={`px-3 py-2 sm:px-0 sm:py-0 ${stagger ? enter : ''}`} style={stagger ? { transitionDelay: `${4 * 30}ms` } : undefined}>
+            <div className="px-3 py-2 sm:px-0 sm:py-0">
               <Button onClick={handleLogout} className="!px-4 !py-2 !text-sm w-full sm:w-auto" variant="secondary">登出</Button>
             </div>
           </>
@@ -203,22 +232,15 @@ function NavigationContent() {
             </svg>
           </button>
         </div>
-        {/* Mobile dropdown as overlay with blur + transition */}
+        {/* Mobile fullscreen overlay with blur + transition */}
         {open && (
-          <>
-            <div
-              className={`fixed inset-x-0 top-16 bottom-0 z-40 bg-white/40 backdrop-blur-sm sm:hidden transition-opacity duration-200 ${animIn ? 'opacity-100' : 'opacity-0'}`}
-              onClick={closeMenu}
-            />
-            <div className="fixed top-16 inset-x-0 z-50 sm:hidden">
-              <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-                <div className={`rounded-b-xl border border-t-0 bg-white shadow-md pb-3 pt-2 transition-all duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] ${animIn ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2'}`}
-                >
-                  <MenuItems stagger />
-                </div>
+          <div className={`fixed inset-0 top-16 z-50 bg-white sm:hidden transition-all duration-300 ${animIn ? 'opacity-100' : 'opacity-0'}`}>
+            <div className="h-full flex flex-col">
+              <div className="flex-1 pt-0">
+                <MenuItems stagger />
               </div>
             </div>
-          </>
+          </div>
         )}
       </div>
     </nav>

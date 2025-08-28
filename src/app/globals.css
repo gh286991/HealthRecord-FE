@@ -20,7 +20,8 @@
 }
 
 body {
-  background: #F8FAFC;
+  background: linear-gradient(135deg, #10b981 0%, #059669 25%, #0891b2 75%, #0e7490 100%);
+  min-height: 100vh;
   color: var(--foreground);
   font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Inter', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', sans-serif;
 }
