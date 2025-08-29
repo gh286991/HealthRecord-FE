@@ -20,12 +20,12 @@ const simplifiedNutritionSchema = z.object({
     foodName: z.string().min(1, '請輸入食物名稱'),
     description: z.string().optional(),
     calories: z.number().min(0).optional(),
-  })).optional().default([]), // 讓食物陣列變成可選
+  })).default([]), // 移除 optional，只保留 default
   notes: z.string().optional(),
   photoUrl: z.string().optional(),
 });
 
-type SimplifiedNutritionFormData = z.infer<typeof simplifiedNutritionSchema>;
+// type SimplifiedNutritionFormData = z.infer<typeof simplifiedNutritionSchema>;
 
 interface SimplifiedNutritionFormProps {
   onSuccess?: (record: {
@@ -41,7 +41,17 @@ interface SimplifiedNutritionFormProps {
     photoUrl?: string;
   }) => void;
   onCancel?: () => void;
-  initialData?: Partial<SimplifiedNutritionFormData>;
+  initialData?: {
+    date?: string;
+    mealType?: '早餐' | '午餐' | '晚餐' | '點心';
+    foods?: Array<{
+      foodName: string;
+      description?: string;
+      calories?: number;
+    }>;
+    notes?: string;
+    photoUrl?: string;
+  };
   recordId?: string;
 }
 
@@ -67,6 +77,17 @@ export default function SimplifiedNutritionForm({
   const [updateNutritionRecord] = useUpdateNutritionRecordMutation();
   const [uploadPhoto] = useUploadPhotoMutation();
 
+  const form = useForm({
+    resolver: zodResolver(simplifiedNutritionSchema),
+    defaultValues: {
+      date: initialData?.date || new Date().toISOString().split('T')[0],
+      mealType: initialData?.mealType || '午餐',
+      foods: initialData?.foods || [],
+      notes: initialData?.notes || '',
+      photoUrl: initialData?.photoUrl || '',
+    },
+  });
+
   const {
     register,
     handleSubmit,
@@ -74,17 +95,7 @@ export default function SimplifiedNutritionForm({
     watch,
     control,
     reset,
-  } = useForm<SimplifiedNutritionFormData>({
-    resolver: zodResolver(simplifiedNutritionSchema),
-    defaultValues: {
-      date: new Date().toISOString().split('T')[0],
-      mealType: '午餐',
-      foods: [],
-      notes: '',
-      photoUrl: '',
-      ...initialData,
-    },
-  });
+  } = form;
 
   // 當 initialData 變化時重置表單
   useEffect(() => {
@@ -116,14 +127,14 @@ export default function SimplifiedNutritionForm({
     reader.readAsDataURL(file);
   };
 
-  const onSubmit = async (data: SimplifiedNutritionFormData) => {
+  const onSubmit = async (data: z.infer<typeof simplifiedNutritionSchema>) => {
     setIsSubmitting(true);
     try {
       // 準備API所需的數據格式 - 根據新的schema格式
       const recordData = {
         date: data.date,
         mealType: data.mealType,
-        foods: (data.foods || []).map(food => ({
+        foods: data.foods.map(food => ({
           foodName: food.foodName,
           description: food.description || '',
           calories: food.calories || 0,
@@ -177,7 +188,7 @@ export default function SimplifiedNutritionForm({
               ...records[recordIndex],
               date: data.date,
               mealType: data.mealType,
-              foods: (data.foods || []).map(food => ({
+              foods: data.foods.map(food => ({
                 foodId: '',
                 foodName: food.foodName,
                 quantity: 1,
@@ -189,7 +200,7 @@ export default function SimplifiedNutritionForm({
                 description: food.description || '',
               })),
               notes: data.notes,
-              totalCalories: (data.foods || []).reduce((sum, food) => sum + (food.calories || 0), 0),
+              totalCalories: data.foods.reduce((sum, food) => sum + (food.calories || 0), 0),
               totalProtein: 0,
               totalCarbohydrates: 0,
               totalFat: 0,
@@ -210,7 +221,7 @@ export default function SimplifiedNutritionForm({
             userId: 'local-user',
             date: data.date,
             mealType: data.mealType,
-            foods: (data.foods || []).map(food => ({
+            foods: data.foods.map(food => ({
               foodId: '',
               foodName: food.foodName,
               quantity: 1,
@@ -222,7 +233,7 @@ export default function SimplifiedNutritionForm({
               description: food.description || '',
             })),
             notes: data.notes,
-            totalCalories: (data.foods || []).reduce((sum, food) => sum + (food.calories || 0), 0),
+            totalCalories: data.foods.reduce((sum, food) => sum + (food.calories || 0), 0),
             totalProtein: 0,
             totalCarbohydrates: 0,
             totalFat: 0,
