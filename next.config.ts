@@ -12,7 +12,7 @@ const withPWA = require('next-pwa')({
   disable: process.env.NODE_ENV === 'development',
   runtimeCaching: [
     {
-      urlPattern: /^https?.*/, 
+      urlPattern: /^https:\/\/tomminio-api\.zeabur\.app\/.*/, 
       handler: 'NetworkFirst',
       options: {
         cacheName: 'offlineCache',
