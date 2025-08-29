@@ -8,9 +8,13 @@ import Image from 'next/image';
 import { 
   useCreateNutritionRecordMutation, 
   useUpdateNutritionRecordMutation,
-  useUploadPhotoMutation 
+  useUploadPhotoMutation,
+  NutritionRecord,
+  FoodItem
 } from '@/lib/nutritionApi';
 import { getSafeImageProps } from '@/lib/imageUtils';
+import { compressImage } from '@/lib/imageCompress';
+import IOSAlertModal from '@/components/ios/IOSAlertModal';
 
 // 簡化的驗證 schema - 食物變成可選
 const simplifiedNutritionSchema = z.object({
@@ -20,6 +24,12 @@ const simplifiedNutritionSchema = z.object({
     foodName: z.string().min(1, '請輸入食物名稱'),
     description: z.string().optional(),
     calories: z.number().min(0).optional(),
+    protein: z.number().min(0).optional(),
+    carbohydrates: z.number().min(0).optional(),
+    fat: z.number().min(0).optional(),
+    fiber: z.number().min(0).optional(),
+    sugar: z.number().min(0).optional(),
+    sodium: z.number().min(0).optional(),
   })).default([]), // 移除 optional，只保留 default
   notes: z.string().optional(),
   photoUrl: z.string().optional(),
@@ -28,18 +38,7 @@ const simplifiedNutritionSchema = z.object({
 // type SimplifiedNutritionFormData = z.infer<typeof simplifiedNutritionSchema>;
 
 interface SimplifiedNutritionFormProps {
-  onSuccess?: (record: {
-    _id: string;
-    date: string;
-    mealType: string;
-    foods: Array<{
-      foodName: string;
-      description?: string;
-      calories: number;
-    }>;
-    notes?: string;
-    photoUrl?: string;
-  }) => void;
+  onSuccess?: (record: NutritionRecord) => void;
   onCancel?: () => void;
   initialData?: {
     date?: string;
@@ -48,6 +47,12 @@ interface SimplifiedNutritionFormProps {
       foodName: string;
       description?: string;
       calories?: number;
+      protein?: number;
+      carbohydrates?: number;
+      fat?: number;
+      fiber?: number;
+      sugar?: number;
+      sodium?: number;
     }>;
     notes?: string;
     photoUrl?: string;
@@ -70,6 +75,7 @@ export default function SimplifiedNutritionForm({
 }: SimplifiedNutritionFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadedPhoto, setUploadedPhoto] = useState<string>('');
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // RTK Query mutations
@@ -97,27 +103,29 @@ export default function SimplifiedNutritionForm({
     reset,
   } = form;
 
-  // 當 initialData 變化時重置表單
+  // 先初始化 field array，供後續 useEffect 使用
+  const { fields, append, remove, replace } = useFieldArray({
+    control,
+    name: 'foods',
+  });
+
+  // 當 initialData 變化時重置表單並同步 foods 陣列
   useEffect(() => {
     if (initialData) {
-      reset({
+      const resetData = {
         date: initialData.date || new Date().toISOString().split('T')[0],
         mealType: initialData.mealType || '午餐',
         foods: initialData.foods || [],
         notes: initialData.notes || '',
         photoUrl: initialData.photoUrl || '',
-      });
-      // 如果有圖片 URL，也要設置預覽
+      };
+      reset(resetData);
+      replace(initialData.foods || []);
       if (initialData.photoUrl) {
         setUploadedPhoto(initialData.photoUrl);
       }
     }
-  }, [initialData, reset]);
-
-  const { fields, append, remove } = useFieldArray({
-    control,
-    name: 'foods',
-  });
+  }, [initialData, reset, replace]);
 
   const handlePhotoPreview = (file: File) => {
     const reader = new FileReader();
@@ -129,6 +137,7 @@ export default function SimplifiedNutritionForm({
 
   const onSubmit = async (data: z.infer<typeof simplifiedNutritionSchema>) => {
     setIsSubmitting(true);
+    console.log('提交資料:', { data, recordId }); // 調試用
     try {
       // 準備API所需的數據格式 - 根據新的schema格式
       const recordData = {
@@ -138,31 +147,46 @@ export default function SimplifiedNutritionForm({
           foodName: food.foodName,
           description: food.description || '',
           calories: food.calories || 0,
-          protein: 0,
-          carbohydrates: 0,
-          fat: 0,
-          fiber: 0,
-          sugar: 0,
-          sodium: 0,
+          protein: food.protein || 0,
+          carbohydrates: food.carbohydrates || 0,
+          fat: food.fat || 0,
+          fiber: food.fiber || 0,
+          sugar: food.sugar || 0,
+          sodium: food.sodium || 0,
         })),
         notes: data.notes,
       };
 
       let newRecord;
-      const photoFile = fileInputRef.current?.files?.[0];
+      let photoFile = fileInputRef.current?.files?.[0];
 
       // 創建或更新記錄
       try {
         if (recordId) {
           // 更新現有記錄
+          console.log('執行更新記錄，ID:', recordId, '資料:', recordData);
           newRecord = await updateNutritionRecord({ id: recordId, data: recordData }).unwrap();
+          console.log('更新結果:', newRecord);
         } else {
           // 創建新記錄
+          console.log('執行創建記錄，資料:', recordData);
           newRecord = await createNutritionRecord(recordData).unwrap();
+          console.log('創建結果:', newRecord);
         }
         
-        // 如果有圖片，後續上傳
+        // 如果有圖片，先壓縮再上傳
         if (photoFile && newRecord._id) {
+          try {
+            photoFile = await compressImage(photoFile, {
+              maxWidth: 1600,
+              maxHeight: 1600,
+              quality: 0.8,
+              mimeType: 'image/webp',
+              maxBytes: 1.5 * 1024 * 1024,
+            });
+          } catch {
+            console.warn('圖片壓縮失敗，改用原圖上傳');
+          }
           try {
             const photoResult = await uploadPhoto({ id: newRecord._id, file: photoFile }).unwrap();
             newRecord.photoUrl = photoResult.photoUrl; // 更新記錄的photoUrl
@@ -173,6 +197,12 @@ export default function SimplifiedNutritionForm({
         }
         
         onSuccess?.(newRecord);
+        
+        // 如果是編輯模式，顯示成功提示
+        if (recordId) {
+          setShowSuccessModal(true);
+        }
+        
       } catch (apiError) {
         console.warn('API不可用，保存到本地存儲:', apiError);
         
@@ -193,26 +223,59 @@ export default function SimplifiedNutritionForm({
                 foodName: food.foodName,
                 quantity: 1,
                 calories: food.calories || 0,
-                protein: 0,
-                carbohydrates: 0,
-                fat: 0,
-                fiber: 0,
+                protein: food.protein || 0,
+                carbohydrates: food.carbohydrates || 0,
+                fat: food.fat || 0,
+                fiber: food.fiber || 0,
+                sugar: food.sugar || 0,
+                sodium: food.sodium || 0,
                 description: food.description || '',
               })),
               notes: data.notes,
               totalCalories: data.foods.reduce((sum, food) => sum + (food.calories || 0), 0),
-              totalProtein: 0,
-              totalCarbohydrates: 0,
-              totalFat: 0,
-              totalFiber: 0,
-              totalSugar: 0,
-              totalSodium: 0,
+              totalProtein: data.foods.reduce((sum, food) => sum + (food.protein || 0), 0),
+              totalCarbohydrates: data.foods.reduce((sum, food) => sum + (food.carbohydrates || 0), 0),
+              totalFat: data.foods.reduce((sum, food) => sum + (food.fat || 0), 0),
+              totalFiber: data.foods.reduce((sum, food) => sum + (food.fiber || 0), 0),
+              totalSugar: data.foods.reduce((sum, food) => sum + (food.sugar || 0), 0),
+              totalSodium: data.foods.reduce((sum, food) => sum + (food.sodium || 0), 0),
               photoUrl: uploadedPhoto || records[recordIndex].photoUrl,
               updatedAt: new Date().toISOString(),
             };
             records[recordIndex] = updatedRecord;
             localStorage.setItem('nutrition-records', JSON.stringify(records));
-            onSuccess?.(updatedRecord);
+            // 轉換為符合 NutritionRecord 類型的格式
+            const nutritionRecord: NutritionRecord = {
+              _id: updatedRecord._id,
+              userId: updatedRecord.userId || 'local-user',
+              date: updatedRecord.date,
+              mealType: updatedRecord.mealType as '早餐' | '午餐' | '晚餐' | '點心',
+              foods: updatedRecord.foods.map((food: FoodItem) => ({
+                foodId: food.foodId || '',
+                foodName: food.foodName,
+                description: food.description || '',
+                quantity: food.quantity || 1,
+                calories: food.calories || 0,
+                protein: food.protein || 0,
+                carbohydrates: food.carbohydrates || 0,
+                fat: food.fat || 0,
+                fiber: food.fiber || 0,
+                sugar: food.sugar || 0,
+                sodium: food.sodium || 0,
+              })),
+              totalCalories: updatedRecord.totalCalories,
+              totalProtein: updatedRecord.totalProtein,
+              totalCarbohydrates: updatedRecord.totalCarbohydrates,
+              totalFat: updatedRecord.totalFat,
+              totalFiber: updatedRecord.totalFiber,
+              totalSugar: updatedRecord.totalSugar,
+              totalSodium: updatedRecord.totalSodium,
+              notes: updatedRecord.notes,
+              photoUrl: updatedRecord.photoUrl,
+              createdAt: updatedRecord.createdAt || new Date().toISOString(),
+              updatedAt: updatedRecord.updatedAt,
+            };
+            onSuccess?.(nutritionRecord);
           }
         } else {
           // 創建新記錄
@@ -226,20 +289,22 @@ export default function SimplifiedNutritionForm({
               foodName: food.foodName,
               quantity: 1,
               calories: food.calories || 0,
-              protein: 0,
-              carbohydrates: 0,
-              fat: 0,
-              fiber: 0,
+              protein: food.protein || 0,
+              carbohydrates: food.carbohydrates || 0,
+              fat: food.fat || 0,
+              fiber: food.fiber || 0,
+              sugar: food.sugar || 0,
+              sodium: food.sodium || 0,
               description: food.description || '',
             })),
             notes: data.notes,
             totalCalories: data.foods.reduce((sum, food) => sum + (food.calories || 0), 0),
-            totalProtein: 0,
-            totalCarbohydrates: 0,
-            totalFat: 0,
-            totalFiber: 0,
-            totalSugar: 0,
-            totalSodium: 0,
+            totalProtein: data.foods.reduce((sum, food) => sum + (food.protein || 0), 0),
+            totalCarbohydrates: data.foods.reduce((sum, food) => sum + (food.carbohydrates || 0), 0),
+            totalFat: data.foods.reduce((sum, food) => sum + (food.fat || 0), 0),
+            totalFiber: data.foods.reduce((sum, food) => sum + (food.fiber || 0), 0),
+            totalSugar: data.foods.reduce((sum, food) => sum + (food.sugar || 0), 0),
+            totalSodium: data.foods.reduce((sum, food) => sum + (food.sodium || 0), 0),
             photoUrl: uploadedPhoto,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
@@ -258,7 +323,17 @@ export default function SimplifiedNutritionForm({
   };
 
   const addFoodItem = () => {
-    append({ foodName: '', description: '', calories: 0 });
+    append({ 
+      foodName: '', 
+      description: '', 
+      calories: 0,
+      protein: 0,
+      carbohydrates: 0,
+      fat: 0,
+      fiber: 0,
+      sugar: 0,
+      sodium: 0,
+    });
   };
 
   const removeFoodItem = (index: number) => {
@@ -284,10 +359,10 @@ export default function SimplifiedNutritionForm({
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-        {/* 餐次選擇 */}
+        {/* 餐次選擇 - 精簡顯示 */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-3">餐次</label>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <label className="block text-sm font-medium text-gray-700 mb-2">餐次</label>
+          <div className="flex gap-2">
             {mealTypeOptions.map((option) => (
               <label key={option.value} className="cursor-pointer">
                 <input
@@ -297,14 +372,14 @@ export default function SimplifiedNutritionForm({
                   className="sr-only"
                 />
                 <div className={`
-                  border-2 rounded-xl p-4 text-center transition-all duration-200
+                  border rounded-lg px-3 py-2 text-center transition-all duration-200 flex items-center gap-2
                   ${watch('mealType') === option.value 
                     ? 'border-green-500 bg-green-50 text-green-700' 
                     : 'border-gray-200 hover:border-gray-300'
                   }
                 `}>
-                  <div className="text-2xl mb-1">{option.icon}</div>
-                  <div className="text-sm font-medium">{option.label}</div>
+                  <span className="text-lg">{option.icon}</span>
+                  <span className="text-sm font-medium">{option.label}</span>
                 </div>
               </label>
             ))}
@@ -312,16 +387,6 @@ export default function SimplifiedNutritionForm({
           {errors.mealType && (
             <p className="mt-1 text-sm text-red-600">{errors.mealType.message}</p>
           )}
-        </div>
-
-        {/* 日期 */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">記錄日期</label>
-          <input
-            type="date"
-            {...register('date')}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-gray-900"
-          />
         </div>
 
         {/* 簡化的食物輸入 */}
@@ -382,6 +447,76 @@ export default function SimplifiedNutritionForm({
                       {...register(`foods.${index}.calories`, { valueAsNumber: true })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-gray-900"
                     />
+                  </div>
+
+                </div>
+
+                {/* 營養素欄位 - 分成兩列更清楚 */}
+                <div className="mt-3 space-y-2">
+                  <div className="text-xs text-gray-600 font-medium">營養成分（可選）</div>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">蛋白質 (g)</label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        placeholder="0"
+                        {...register(`foods.${index}.protein`, { valueAsNumber: true })}
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-gray-900"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">碳水化合物 (g)</label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        placeholder="0"
+                        {...register(`foods.${index}.carbohydrates`, { valueAsNumber: true })}
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-gray-900"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">脂肪 (g)</label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        placeholder="0"
+                        {...register(`foods.${index}.fat`, { valueAsNumber: true })}
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-gray-900"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">纖維 (g)</label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        placeholder="0"
+                        {...register(`foods.${index}.fiber`, { valueAsNumber: true })}
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-gray-900"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">糖分 (g)</label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        placeholder="0"
+                        {...register(`foods.${index}.sugar`, { valueAsNumber: true })}
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-gray-900"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-500 mb-1">鈉 (mg)</label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        placeholder="0"
+                        {...register(`foods.${index}.sodium`, { valueAsNumber: true })}
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-gray-900"
+                      />
+                    </div>
                   </div>
 
                   {/* 刪除按鈕 */}
@@ -473,6 +608,16 @@ export default function SimplifiedNutritionForm({
           </button>
         </div>
       </form>
+
+      {/* 成功提示 Modal */}
+      <IOSAlertModal
+        open={showSuccessModal}
+        title="更新成功"
+        message="飲食紀錄已成功更新！"
+        confirmText="確定"
+        onConfirm={() => setShowSuccessModal(false)}
+        onCancel={() => setShowSuccessModal(false)}
+      />
     </div>
   );
 }

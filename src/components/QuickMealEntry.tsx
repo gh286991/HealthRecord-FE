@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
 import { 
   useCreateNutritionRecordMutation,
   useUploadPhotoMutation 
 } from '@/lib/nutritionApi';
 import { getSafeImageProps } from '@/lib/imageUtils';
+import { compressImage } from '@/lib/imageCompress';
 
 interface QuickMealEntryProps {
   mealType: '早餐' | '午餐' | '晚餐' | '點心';
@@ -43,6 +44,15 @@ export default function QuickMealEntry({ mealType, onSave, onCancel }: QuickMeal
   const [createNutritionRecord] = useCreateNutritionRecordMutation();
   const [uploadPhoto] = useUploadPhotoMutation();
 
+  // 鎖定背景滾動
+  useEffect(() => {
+    const original = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = original;
+    };
+  }, []);
+
   const handlePhotoPreview = (file: File) => {
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -70,7 +80,7 @@ export default function QuickMealEntry({ mealType, onSave, onCancel }: QuickMeal
           foodName: foodName.trim(),
           description: description.trim(),
           calories: typeof calories === 'number' ? calories : 0,
-          protein: 0,
+          protein: 0, // 快速記錄暫時設為0，詳細記錄可在編輯時補充
           carbohydrates: 0,
           fat: 0,
           fiber: 0,
@@ -81,14 +91,25 @@ export default function QuickMealEntry({ mealType, onSave, onCancel }: QuickMeal
       };
 
       let newRecord;
-      const photoFile = fileInputRef.current?.files?.[0];
+      let photoFile = fileInputRef.current?.files?.[0];
 
       // 先創建記錄
       try {
         newRecord = await createNutritionRecord(recordData).unwrap();
         
-        // 如果有圖片，後續上傳
+        // 如果有圖片，先壓縮再上傳
         if (photoFile && newRecord._id) {
+          try {
+            photoFile = await compressImage(photoFile, {
+              maxWidth: 1600,
+              maxHeight: 1600,
+              quality: 0.8,
+              mimeType: 'image/webp',
+              maxBytes: 1.5 * 1024 * 1024,
+            });
+          } catch {
+            console.warn('圖片壓縮失敗，改用原圖上傳');
+          }
           try {
             const photoResult = await uploadPhoto({ id: newRecord._id, file: photoFile }).unwrap();
             newRecord.photoUrl = photoResult.photoUrl; // 更新記錄的photoUrl
@@ -163,8 +184,8 @@ export default function QuickMealEntry({ mealType, onSave, onCancel }: QuickMeal
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 transform transition-all">
+    <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 transform transition-all max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center">
             <span className="text-3xl mr-3">{mealIcons[mealType]}</span>

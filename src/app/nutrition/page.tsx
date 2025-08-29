@@ -35,11 +35,16 @@ export default function NutritionPage() {
     setViewMode('edit');
   };
 
-  const handleFormSuccess = () => {
-    setViewMode('list');
-    setEditingRecord(null);
-    // 強制重新加載記錄列表
-    window.location.reload();
+  const handleFormSuccess = (updatedRecord: NutritionRecord) => {
+    if (editingRecord) {
+      // 編輯模式：更新編輯中的記錄資料，停留在編輯模式
+      setEditingRecord(updatedRecord);
+      // 不改變 viewMode，保持在編輯模式
+    } else {
+      // 新增模式：回到列表模式
+      setViewMode('list');
+    }
+    // RTK Query 會自動更新快取，不需要手動重新加載
   };
 
   const handleCancel = () => {
@@ -60,7 +65,7 @@ export default function NutritionPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-blue-50 to-purple-50">
-      <div className="container mx-auto py-8">
+      <div className="container mx-auto">
         {viewMode === 'list' && (
           <ImprovedNutritionList 
             onAddNew={handleAddNew}
@@ -82,10 +87,16 @@ export default function NutritionPage() {
                 foods: editingRecord.foods.map(food => ({
                   foodName: food.foodName,
                   description: food.description || '',
-                  calories: food.calories,
+                  calories: food.calories || 0,
+                  protein: food.protein || 0,
+                  carbohydrates: food.carbohydrates || 0,
+                  fat: food.fat || 0,
+                  fiber: food.fiber || 0,
+                  sugar: food.sugar || 0,
+                  sodium: food.sodium || 0,
                 })),
-                notes: editingRecord.notes,
-                photoUrl: editingRecord.photoUrl,
+                notes: editingRecord.notes || '',
+                photoUrl: editingRecord.photoUrl || '',
               } : undefined}
             />
           </div>

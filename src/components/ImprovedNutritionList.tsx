@@ -10,6 +10,7 @@ import {
 } from '@/lib/nutritionApi';
 import { getSafeImageProps } from '@/lib/imageUtils';
 import IOSCalendar from '@/components/ios/IOSCalendar';
+import IOSWeekStrip from '@/components/ios/IOSWeekStrip';
 import Card from '@/components/Card';
 import QuickMealEntry from './QuickMealEntry';
 
@@ -25,9 +26,30 @@ const mealTypeIcons = {
   '點心': '🍎',
 };
 
-export default function ImprovedNutritionList({ onAddNew, onEdit }: ImprovedNutritionListProps) {
+export default function ImprovedNutritionList({ onEdit }: ImprovedNutritionListProps) {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [quickMealType, setQuickMealType] = useState<'早餐' | '午餐' | '晚餐' | '點心' | null>(null);
+  const [isMealPickerOpen, setIsMealPickerOpen] = useState(false);
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  // 餐次選擇開啟時鎖定背景滾動
+  useEffect(() => {
+    if (!isMealPickerOpen) return;
+    const original = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = original;
+    };
+  }, [isMealPickerOpen]);
+
+  // 月曆開啟時鎖定背景滾動
+  useEffect(() => {
+    if (!isCalendarOpen) return;
+    const original = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = original;
+    };
+  }, [isCalendarOpen]);
   const [currentMonth, setCurrentMonth] = useState({
     year: new Date(selectedDate).getFullYear(),
     month: new Date(selectedDate).getMonth() + 1,
@@ -136,8 +158,31 @@ export default function ImprovedNutritionList({ onAddNew, onEdit }: ImprovedNutr
     return records.reduce((sum, record) => sum + (record.totalCalories || 0), 0);
   };
 
-  const getMealsByType = (mealType: string) => {
-    return records.filter(record => record.mealType === mealType);
+  const getDailyTotals = () => {
+    return records.reduce(
+      (totals, record) => ({
+        totalCalories: totals.totalCalories + (record.totalCalories || 0),
+        totalProtein: totals.totalProtein + (record.totalProtein || 0),
+        totalCarbohydrates: totals.totalCarbohydrates + (record.totalCarbohydrates || 0),
+        totalFat: totals.totalFat + (record.totalFat || 0),
+        totalFiber: totals.totalFiber + (record.totalFiber || 0),
+        totalSugar: totals.totalSugar + (record.totalSugar || 0),
+        totalSodium: totals.totalSodium + (record.totalSodium || 0),
+      }),
+      { totalCalories: 0, totalProtein: 0, totalCarbohydrates: 0, totalFat: 0, totalFiber: 0, totalSugar: 0, totalSodium: 0 },
+    );
+  };
+
+  const formatRecordTime = (record: NutritionRecord) => {
+    const iso = record.createdAt || record.date;
+    if (!iso) return '';
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return '';
+    try {
+      return d.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
+    } catch {
+      return '';
+    }
   };
 
   if (loading) {
@@ -157,54 +202,79 @@ export default function ImprovedNutritionList({ onAddNew, onEdit }: ImprovedNutr
       {/* 日期選擇器和統計 */}
       <div className="mb-6">
         <div className="flex flex-col gap-4 items-center">
-          <div className="w-full max-w-md">
-            <IOSCalendar
-              selectedDate={selectedDate}
-              onChange={setSelectedDate}
-              markedDates={markedDates}
-            />
+          <div className="w-full max-w-2xl flex items-center justify-between">
+            <button
+              onClick={() => setIsCalendarOpen(true)}
+              className="p-2 rounded-lg hover:bg-gray-100 text-gray-700"
+              aria-label="開啟日曆"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+            </button>
+            <div className="text-xl font-bold text-gray-900">今天 {new Date(selectedDate).toLocaleDateString('zh-TW', { month: 'numeric', day: 'numeric'})}</div>
+            <button
+              onClick={() => setIsMealPickerOpen(true)}
+              className="p-2 rounded-lg hover:bg-gray-100 text-gray-700"
+              aria-label="新增"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v12m6-6H6" />
+              </svg>
+            </button>
           </div>
-          <div className="w-full max-w-xs">
-            <Card className="p-4 text-center">
-              <div className="text-2xl font-semibold text-green-600">{getTotalCaloriesForDate()}</div>
-              <div className="text-xs text-gray-500 mt-1">總卡路里</div>
+          <div className="w-full max-w-2xl">
+            <IOSWeekStrip selectedDate={selectedDate} onChange={setSelectedDate} />
+          </div>
+          <div className="w-full max-w-2xl">
+            <Card className="p-3">
+              <div className="grid grid-cols-7 divide-x divide-gray-100">
+                <div className="text-center px-2">
+                  <div className="text-[10px] text-gray-500">攝取 / 今日</div>
+                  <div className="text-lg font-semibold text-green-600">{getTotalCaloriesForDate()}</div>
+                  <div className="text-[10px] text-gray-400">卡路里</div>
+                </div>
+                {(() => {
+                  const totals = getDailyTotals();
+                  return (
+                    <>
+                      <div className="text-center px-2">
+                        <div className="text-[10px] text-gray-500">今日</div>
+                        <div className="text-base font-semibold text-gray-800">{totals.totalProtein}</div>
+                        <div className="text-[10px] text-gray-400">蛋白質</div>
+                      </div>
+                      <div className="text-center px-2">
+                        <div className="text-[10px] text-gray-500">今日</div>
+                        <div className="text-base font-semibold text-gray-800">{totals.totalCarbohydrates}</div>
+                        <div className="text-[10px] text-gray-400">碳水</div>
+                      </div>
+                      <div className="text-center px-2">
+                        <div className="text-[10px] text-gray-500">今日</div>
+                        <div className="text-base font-semibold text-gray-800">{totals.totalFat}</div>
+                        <div className="text-[10px] text-gray-400">脂肪</div>
+                      </div>
+                      <div className="text-center px-2">
+                        <div className="text-[10px] text-gray-500">今日</div>
+                        <div className="text-base font-semibold text-gray-800">{totals.totalFiber}</div>
+                        <div className="text-[10px] text-gray-400">纖維</div>
+                      </div>
+                      <div className="text-center px-2">
+                        <div className="text-[10px] text-gray-500">今日</div>
+                        <div className="text-base font-semibold text-gray-800">{totals.totalSugar}</div>
+                        <div className="text-[10px] text-gray-400">糖分</div>
+                      </div>
+                      <div className="text-center px-2">
+                        <div className="text-[10px] text-gray-500">今日</div>
+                        <div className="text-base font-semibold text-gray-800">{totals.totalSodium}</div>
+                        <div className="text-[10px] text-gray-400">鈉</div>
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
             </Card>
           </div>
         </div>
-      </div>
-
-      <div className="max-w-lg mx-auto">
-        {/* 快速添加按鈕 */}
-        <div className="grid grid-cols-2 gap-3 mb-6">
-          {(Object.keys(mealTypeIcons) as Array<keyof typeof mealTypeIcons>).map((mealType) => {
-            const mealCount = getMealsByType(mealType).length;
-            return (
-              <button
-                key={mealType}
-                onClick={() => setQuickMealType(mealType)}
-                className="relative bg-gradient-to-br from-green-50 to-blue-50 hover:from-green-100 hover:to-blue-100 border-2 border-green-200 hover:border-green-300 rounded-xl p-4 text-center transition-all duration-200 transform hover:scale-105"
-              >
-                <div className="text-2xl mb-1">{mealTypeIcons[mealType]}</div>
-                <div className="text-sm font-medium text-gray-700">{mealType}</div>
-                {mealCount > 0 && (
-                  <div className="absolute -top-2 -right-2 bg-green-500 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center">
-                    {mealCount}
-                  </div>
-                )}
-              </button>
-            );
-          })}
-        </div>
-
-        <button
-          onClick={onAddNew}
-          className="w-full py-3 px-4 border-2 border-dashed border-gray-300 hover:border-green-400 rounded-lg text-gray-600 hover:text-green-600 font-medium transition-colors flex items-center justify-center"
-        >
-          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-          </svg>
-          詳細記錄（多項食物）
-        </button>
       </div>
 
       {/* 記錄列表 */}
@@ -224,7 +294,7 @@ export default function ImprovedNutritionList({ onAddNew, onEdit }: ImprovedNutr
                   <span className="text-2xl mr-3">{mealTypeIcons[record.mealType as keyof typeof mealTypeIcons]}</span>
                   <div className="flex-1 min-w-0">
                     <h3 className="text-lg font-semibold text-gray-900">{record.mealType}</h3>
-                    <p className="text-sm text-gray-600">{record.date}</p>
+                    <p className="text-sm text-gray-600">{formatRecordTime(record)}</p>
                   </div>
                 </div>
                 
@@ -237,7 +307,22 @@ export default function ImprovedNutritionList({ onAddNew, onEdit }: ImprovedNutr
                   {/* 操作按鈕 */}
                   <div className="flex gap-2">
                     <button
-                      onClick={() => onEdit(record)}
+                      onClick={() => {
+                        // 使用帶有完整營養素字段的記錄資料進行編輯
+                        const completeRecord = {
+                          ...record,
+                          foods: record.foods.map(food => ({
+                            ...food,
+                            protein: food.protein || 0,
+                            carbohydrates: food.carbohydrates || 0,
+                            fat: food.fat || 0,
+                            fiber: food.fiber || 0,
+                            sugar: food.sugar || 0,
+                            sodium: food.sodium || 0,
+                          }))
+                        };
+                        onEdit(completeRecord);
+                      }}
                       className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                     >
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -308,6 +393,55 @@ export default function ImprovedNutritionList({ onAddNew, onEdit }: ImprovedNutr
           onSave={handleQuickSave}
           onCancel={() => setQuickMealType(null)}
         />
+      )}
+
+      {/* 餐次選擇彈窗 */}
+      {isMealPickerOpen && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 text-center">選擇餐次</h3>
+            <div className="grid grid-cols-2 gap-3">
+              {(Object.keys(mealTypeIcons) as Array<keyof typeof mealTypeIcons>).map((mealType) => (
+                <button
+                  key={mealType}
+                  onClick={() => {
+                    setIsMealPickerOpen(false);
+                    setQuickMealType(mealType);
+                  }}
+                  className="bg-gradient-to-br from-green-50 to-blue-50 hover:from-green-100 hover:to-blue-100 border-2 border-green-200 hover:border-green-300 rounded-xl p-4 text-center transition-all duration-200"
+                >
+                  <div className="text-2xl mb-1">{mealTypeIcons[mealType]}</div>
+                  <div className="text-sm font-medium text-gray-700">{mealType}</div>
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={() => setIsMealPickerOpen(false)}
+              className="mt-4 w-full py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+            >
+              取消
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 月曆彈窗（僅切換日期） */}
+      {isCalendarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+          onClick={() => setIsCalendarOpen(false)}
+        >
+          <div onClick={(e) => e.stopPropagation()}>
+            <IOSCalendar
+              selectedDate={selectedDate}
+              markedDates={markedDates}
+              onChange={(d) => {
+                setSelectedDate(d);
+                setIsCalendarOpen(false);
+              }}
+            />
+          </div>
+        </div>
       )}
     </div>
   );
