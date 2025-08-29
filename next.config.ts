@@ -32,7 +32,6 @@ const nextConfig: NextConfig = {
       {
         protocol: 'https',
         hostname: 'tomminio-api.zeabur.app',
-        pathname: '/zeabur/**',
       },
       {
         protocol: 'https',
@@ -44,4 +43,4 @@ const nextConfig: NextConfig = {
 
 // 使用類型斷言來解決 next-pwa 版本不兼容問題
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export default withNextIntl(withPWA(nextConfig as any));
+export default withPWA(withNextIntl(nextConfig as any));
