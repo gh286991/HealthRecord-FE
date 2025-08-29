@@ -32,6 +32,7 @@ const nextConfig: NextConfig = {
       {
         protocol: 'https',
         hostname: 'tomminio-api.zeabur.app',
+        pathname: '/zeabur/**',
       },
       {
         protocol: 'https',
