@@ -38,8 +38,13 @@ export function isValidImageUrl(url: string): boolean {
  * 安全載入圖片的React props
  */
 export function getSafeImageProps(url: string) {
+  const formatted = formatImageUrl(url);
+  const isData = formatted.startsWith('data:');
+  const isHttp = formatted.startsWith('http://') || formatted.startsWith('https://');
+
   return {
-    src: formatImageUrl(url),
+    src: formatted,
+    ...(isData || !isHttp ? { unoptimized: true } : {}),
     onError: (e: React.SyntheticEvent<HTMLImageElement>) => {
       console.error('圖片載入失敗:', url);
       // 隱藏失敗的圖片

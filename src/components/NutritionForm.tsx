@@ -5,6 +5,7 @@ import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import Image from 'next/image';
+import { getSafeImageProps } from '@/lib/imageUtils';
 import { nutritionApi, foodApi, CreateNutritionRecord, NutritionRecord, Food } from '@/lib/api';
 import { compressImage } from '@/lib/imageCompress';
 
@@ -512,7 +513,7 @@ export default function NutritionForm({ onSuccess, onCancel, initialData }: Nutr
           {uploadedPhoto && (
             <div className="mt-4">
               <Image
-                src={uploadedPhoto}
+                {...getSafeImageProps(uploadedPhoto)}
                 alt="餐點照片預覽"
                 width={128}
                 height={128}
