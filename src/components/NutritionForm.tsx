@@ -92,18 +92,17 @@ export default function NutritionForm({ onSuccess, onCancel, initialData }: Nutr
   // 處理圖片預覽
   const handlePhotoPreview = (file: File) => {
     setIsUploading(true);
-    try {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const localUrl = e.target?.result as string;
-        setUploadedPhoto(localUrl);
-      };
-      reader.readAsDataURL(file);
-    } catch (error) {
-      console.error('圖片預覽失敗:', error);
-    } finally {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const localUrl = e.target?.result as string;
+      setUploadedPhoto(localUrl);
       setIsUploading(false);
-    }
+    };
+    reader.onerror = (error) => {
+      console.error('圖片預覽失敗:', error);
+      setIsUploading(false);
+    };
+    reader.readAsDataURL(file);
   };
 
   const onSubmit = async (data: NutritionFormData) => {
