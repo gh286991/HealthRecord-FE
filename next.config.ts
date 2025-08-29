@@ -24,10 +24,27 @@ const withPWA = require('next-pwa')({
   ],
 });
 
+// 從環境變數取得 MinIO 對外網域，並做基本正規化
+const minioFromEnv = process.env.NEXT_PUBLIC_MINIO_DOMAIN
+  || process.env.NEXT_PUBLIC_MINIO_ENDPOINT
+  || process.env.MINIO_END_POINT;
+
+function normalizeDomain(domain?: string): string | undefined {
+  if (!domain) return undefined;
+  return domain.replace(/^https?:\/\//, '').split('/')[0];
+}
+
+const allowedDomains = ['tomminio-api.zeabur.app'];
+const normalizedMinio = normalizeDomain(minioFromEnv);
+if (normalizedMinio && !allowedDomains.includes(normalizedMinio)) {
+  allowedDomains.push(normalizedMinio);
+}
+
 const nextConfig: NextConfig = {
   /* config options here */
   images: {
-    domains: ['tomminio-api.zeabur.app'],
+    domains: allowedDomains,
+    formats: ['image/avif', 'image/webp'],
   },
 };
 

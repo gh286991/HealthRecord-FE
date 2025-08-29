@@ -246,7 +246,7 @@ export default function QuickMealEntry({ mealType, onSave, onCancel }: QuickMeal
               <input
                 type="file"
                 ref={fileInputRef}
-                accept="image/*"
+                accept="image/jpeg,image/png"
                 className="hidden"
                 onChange={(e) => {
                   if (e.target.files && e.target.files[0]) {

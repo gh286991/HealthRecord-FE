@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import Image from 'next/image';
 import { nutritionApi, foodApi, CreateNutritionRecord, NutritionRecord, Food } from '@/lib/api';
+import { compressImage } from '@/lib/imageCompress';
 
 const nutritionSchema = z.object({
   mealType: z.enum(['早餐', '午餐', '晚餐', '點心']),
@@ -116,10 +117,22 @@ export default function NutritionForm({ onSuccess, onCancel, initialData }: Nutr
 
       let newRecord;
       
-      // 如果有上傳的圖片，使用 createWithPhoto API
+      // 如果有上傳的圖片，壓縮成 JPEG 後使用 createWithPhoto API
       if (fileInputRef.current?.files?.[0]) {
         try {
-          newRecord = await nutritionApi.createWithPhoto(recordData, fileInputRef.current.files[0]);
+          let photoFile = fileInputRef.current.files[0];
+          try {
+            photoFile = await compressImage(photoFile, {
+              maxWidth: 1600,
+              maxHeight: 1600,
+              quality: 0.8,
+              mimeType: 'image/webp',
+              maxBytes: 1.5 * 1024 * 1024,
+            });
+          } catch {
+            console.warn('圖片壓縮失敗，改用原圖上傳');
+          }
+          newRecord = await nutritionApi.createWithPhoto(recordData, photoFile);
         } catch (photoError) {
           console.error('使用圖片創建記錄失敗，嘗試無圖片創建:', photoError);
           newRecord = await nutritionApi.create(recordData);
@@ -462,7 +475,7 @@ export default function NutritionForm({ onSuccess, onCancel, initialData }: Nutr
             <input
               type="file"
               ref={fileInputRef}
-              accept="image/*"
+              accept="image/jpeg,image/png"
               className="hidden"
               onChange={(e) => {
                 if (e.target.files && e.target.files[0]) {
