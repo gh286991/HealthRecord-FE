@@ -15,95 +15,7 @@ export enum WorkoutType {
   Other = 'other'
 }
 
-export enum CardioType {
-  Running = 'running',
-  Cycling = 'cycling',
-  Walking = 'walking',
-  Elliptical = 'elliptical',
-  Rowing = 'rowing',
-  Treadmill = 'treadmill',
-  StairClimber = 'stairclimber',
-  Other = 'other'
-}
 
-export interface WorkoutSet {
-  weight: number;
-  reps: number;
-  restSeconds?: number;
-  rpe?: number;
-  completed?: boolean;
-}
-
-export interface WorkoutExercise {
-  exerciseName: string;
-  bodyPart?: string;
-  exerciseId: string;
-  sets: WorkoutSet[];
-}
-
-// 運動類型專用數據接口
-export interface ResistanceData {
-  exercises: WorkoutExercise[];
-  totalVolume: number;
-  totalSets: number;
-  totalReps: number;
-  totalRestSeconds?: number;
-}
-
-export interface CardioData {
-  cardioType: CardioType;
-  distance?: number; // 距離（公里）
-  intensity: number; // 強度等級（1-10）
-  averageHeartRate?: number; // 平均心率
-  maxHeartRate?: number; // 最大心率
-  caloriesBurned?: number; // 消耗卡路里
-  location?: string; // 運動地點
-}
-
-export interface FlexibilityData {
-  poses: string[]; // 體式或動作名稱
-  difficulty?: number; // 難度等級（1-10）
-  focusAreas: string[]; // 重點部位
-  relaxationLevel?: number; // 放鬆程度（1-10）
-}
-
-export interface WorkoutRecord {
-  _id: string;
-  userId: string;
-  date: string;
-  type: WorkoutType; // 運動類型
-  duration?: number; // 運動持續時間（分鐘）- 通用欄位
-  notes?: string;
-  
-  // 各運動類型的專用數據
-  resistanceData?: ResistanceData;
-  cardioData?: CardioData;
-  flexibilityData?: FlexibilityData;
-  
-  // 向後兼容的舊欄位（標記為可選）
-  exercises?: WorkoutExercise[];
-  totalVolume?: number;
-  totalSets?: number;
-  totalReps?: number;
-  workoutDurationSeconds?: number;
-  totalRestSeconds?: number;
-  
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface DailyWorkoutResponse {
-  date: string;
-  records: WorkoutRecord[];
-  dailyTotals: {
-    totalVolume: number;
-    totalSets: number;
-    totalReps: number;
-    totalDuration: number; // 總運動時間（分鐘）
-    recordCount: number;
-    recordsByType: Record<WorkoutType, number>; // 按運動類型統計
-  };
-}
 
 export const workoutApi = createApi({
   reducerPath: 'workoutApi',
@@ -247,17 +159,11 @@ export const workoutApi = createApi({
 export const {
   useGetMarkedDatesQuery,
   useGetWorkoutListQuery,
-  useLazyGetWorkoutListQuery,
-  useGetWorkoutDailySummaryQuery,
-  useGetWorkoutByIdQuery,
   useCreateWorkoutMutation,
   useUpdateWorkoutMutation,
   useDeleteWorkoutMutation,
   useGetBodyPartsQuery,
-  useGetWorkoutTypesQuery,
   useGetCommonExercisesQuery,
-  useGetAllExercisesQuery,
-  useGetUserExercisesQuery,
   useAddUserExerciseMutation,
   useUpdateUserExerciseMutation,
   useDeleteUserExerciseMutation,

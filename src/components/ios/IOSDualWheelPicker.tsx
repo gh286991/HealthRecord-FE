@@ -6,11 +6,7 @@ import WheelPicker, { WheelOption } from '../WheelPicker';
 import IOSBottomSheet from './IOSBottomSheet';
 import QuickAddExercise from '@/components/workout/QuickAddExercise';
 
-export interface DualExerciseItem {
-  _id: string;
-  name: string;
-  bodyPart?: string;
-}
+
 
 interface IOSDualWheelPickerProps {
   open: boolean;

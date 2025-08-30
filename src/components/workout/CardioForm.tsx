@@ -9,15 +9,7 @@ import IOSDatePicker from '@/components/ios/IOSDatePicker';
 import IOSWheelPicker from '@/components/ios/IOSWheelPicker';
 import IOSNumericKeypad from '@/components/ios/IOSNumericKeypad';
 
-export interface CardioData {
-  cardioType: CardioType;
-  distance?: number; // 距離（公里）
-  intensity: number; // 強度等級（1-10）
-  averageHeartRate?: number; // 平均心率
-  maxHeartRate?: number; // 最大心率
-  caloriesBurned?: number; // 消耗卡路里（估算）
-  location?: string; // 運動地點
-}
+
 
 interface CardioFormProps {
   initialData?: {

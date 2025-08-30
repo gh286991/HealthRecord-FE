@@ -37,46 +37,7 @@ export interface NutritionRecord {
   updatedAt: string;
 }
 
-export interface CreateNutritionRecord {
-  date: string;
-  mealType: '早餐' | '午餐' | '晚餐' | '點心';
-  foods: {
-    foodName: string;
-    description?: string;
-    calories?: number;
-    protein?: number;
-    carbohydrates?: number;
-    fat?: number;
-    fiber?: number;
-    sugar?: number;
-    sodium?: number;
-  }[];
-  notes?: string;
-  photoUrl?: string;
-}
 
-export interface UpdateNutritionRecord {
-  date?: string;
-  mealType?: '早餐' | '午餐' | '晚餐' | '點心';
-  foods?: {
-    foodName: string;
-    description?: string;
-    calories?: number;
-    protein?: number;
-    carbohydrates?: number;
-    fat?: number;
-    fiber?: number;
-    sugar?: number;
-    sodium?: number;
-  }[];
-  notes?: string;
-  photoUrl?: string;
-}
-
-export interface GetNutritionRecordsResponse {
-  records: NutritionRecord[];
-  total: number;
-}
 
 export const nutritionApiRtk = createApi({
   reducerPath: 'nutritionApi',
@@ -183,11 +144,9 @@ export const nutritionApiRtk = createApi({
 // 導出 hooks
 export const {
   useGetNutritionRecordsQuery,
-  useGetNutritionRecordQuery,
   useCreateNutritionRecordMutation,
   useUpdateNutritionRecordMutation,
   useDeleteNutritionRecordMutation,
-  useGetDailySummaryQuery,
   useGetMarkedDatesQuery,
   useUploadPhotoMutation,
 } = nutritionApiRtk;

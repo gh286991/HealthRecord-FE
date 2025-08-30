@@ -1,12 +1,6 @@
 // 圖片壓縮工具（僅在瀏覽器端使用）
 
-export interface CompressOptions {
-  maxWidth?: number;
-  maxHeight?: number;
-  quality?: number; // 0~1，僅對 JPEG/WebP 有效
-  mimeType?: 'image/jpeg' | 'image/webp' | 'image/png';
-  maxBytes?: number; // 目標上限（非嚴格保證），超過時會嘗試降低品質
-}
+
 
 const DEFAULT_OPTIONS: Required<CompressOptions> = {
   maxWidth: 1600,
@@ -134,13 +128,6 @@ export async function compressImage(
   return new File([finalBlob], newName, { type: finalBlob.type, lastModified: Date.now() });
 }
 
-export async function blobToDataURL(blob: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve((reader.result as string) || '');
-    reader.onerror = reject;
-    reader.readAsDataURL(blob);
-  });
-}
+
 
 

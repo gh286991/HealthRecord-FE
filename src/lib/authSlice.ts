@@ -3,10 +3,7 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import type { UserProfile } from '@/lib/api';
 
-export interface AuthState {
-  token: string | null;
-  user: UserProfile | null;
-}
+
 
 const initialState: AuthState = {
   token: typeof window !== 'undefined' ? localStorage.getItem('token') : null,
