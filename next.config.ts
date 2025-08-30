@@ -38,6 +38,8 @@ const nextConfig: NextConfig = {
         hostname: 'placehold.co',
       }
     ],
+    // TODO: 網域問題，先關閉圖片優化
+    unoptimized: true, 
   },
 };
 
