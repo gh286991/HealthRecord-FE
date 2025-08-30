@@ -6,7 +6,12 @@ import WheelPicker, { WheelOption } from '../WheelPicker';
 import IOSBottomSheet from './IOSBottomSheet';
 import QuickAddExercise from '@/components/workout/QuickAddExercise';
 
-
+// 雙輪選擇器的運動項目類型
+interface DualExerciseItem {
+  _id: string;
+  name: string;
+  bodyPart?: string;
+}
 
 interface IOSDualWheelPickerProps {
   open: boolean;

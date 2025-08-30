@@ -1,6 +1,13 @@
 // 圖片壓縮工具（僅在瀏覽器端使用）
 
-
+// 圖片壓縮選項類型
+interface CompressOptions {
+  maxWidth?: number;
+  maxHeight?: number;
+  quality?: number;
+  mimeType?: string;
+  maxBytes?: number;
+}
 
 const DEFAULT_OPTIONS: Required<CompressOptions> = {
   maxWidth: 1600,

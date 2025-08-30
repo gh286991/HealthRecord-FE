@@ -18,6 +18,22 @@ export interface FoodItem {
   sodium?: number;
 }
 
+export interface CreateNutritionRecord {
+  date: string;
+  mealType: '早餐' | '午餐' | '晚餐' | '點心';
+  foods: FoodItem[];
+  notes?: string;
+  photoUrl?: string;
+}
+
+export interface UpdateNutritionRecord {
+  date?: string;
+  mealType?: '早餐' | '午餐' | '晚餐' | '點心';
+  foods?: FoodItem[];
+  notes?: string;
+  photoUrl?: string;
+}
+
 export interface NutritionRecord {
   _id: string;
   userId: string;

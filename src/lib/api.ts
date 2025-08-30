@@ -43,6 +43,20 @@ api.interceptors.response.use(
 );
 
 // 類型定義
+export interface FoodItem {
+  foodId?: string;
+  foodName: string;
+  description?: string;
+  quantity?: number;
+  calories: number;
+  protein: number;
+  carbohydrates: number;
+  fat: number;
+  fiber?: number;
+  sugar?: number;
+  sodium?: number;
+}
+
 export interface RegisterData {
   username: string;
   email: string;

@@ -3,7 +3,11 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import type { UserProfile } from '@/lib/api';
 
-
+// 認證狀態類型
+interface AuthState {
+  token: string | null;
+  user: UserProfile | null;
+}
 
 const initialState: AuthState = {
   token: typeof window !== 'undefined' ? localStorage.getItem('token') : null,

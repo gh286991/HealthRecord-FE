@@ -8,7 +8,7 @@ import IOSCalendar from '@/components/ios/IOSCalendar';
 import IOSDualWheelPicker from '@/components/ios/IOSDualWheelPicker';
 import IOSNumericKeypad from '@/components/ios/IOSNumericKeypad';
 import { tokenUtils } from '@/lib/api';
-import { WorkoutRecord, WorkoutExercise, WorkoutSet, WorkoutType, CardioData, useCreateWorkoutMutation, useGetWorkoutListQuery, useUpdateWorkoutMutation, useGetBodyPartsQuery, useGetCommonExercisesQuery, useDeleteWorkoutMutation, useGetMarkedDatesQuery } from '@/lib/workoutApi';
+import { WorkoutRecord, WorkoutExercise, WorkoutSet, WorkoutType, CardioData, BodyPart, useCreateWorkoutMutation, useGetWorkoutListQuery, useUpdateWorkoutMutation, useGetBodyPartsQuery, useGetCommonExercisesQuery, useDeleteWorkoutMutation, useGetMarkedDatesQuery } from '@/lib/workoutApi';
 import Button from '@/components/Button';
 import Card from '@/components/Card';
 import Toast from '@/components/Toast';
@@ -1131,7 +1131,13 @@ function WorkoutForm({ draftKey, initialData, onCancel, onSubmit }: {
             exercises={(commonExercises || []).map(e => ({ _id: e._id, name: e.name, bodyPart: e.bodyPart }))}
             onClose={() => setDualOpen(false)}
             onConfirm={(ex) => {
-              setExercises((prev) => [...prev, { exerciseName: ex.name, bodyPart: ex.bodyPart, exerciseId: ex._id, sets: [{ weight: 0, reps: 8, clientId: crypto.randomUUID() }], clientId: crypto.randomUUID() }]);
+              setExercises((prev) => [...prev, { 
+                exerciseName: ex.name, 
+                bodyPart: ex.bodyPart as BodyPart, 
+                exerciseId: ex._id, 
+                sets: [{ weight: 0, reps: 8, clientId: crypto.randomUUID() }], 
+                clientId: crypto.randomUUID() 
+              }]);
               setDualOpen(false);
               showToast(`${t('workout.exerciseAdded')}：${ex.name}`);
               try { document.getElementById('exercise-bottom')?.scrollIntoView({ behavior: 'smooth' }); } catch { }
@@ -1141,7 +1147,13 @@ function WorkoutForm({ draftKey, initialData, onCancel, onSubmit }: {
             open={quickOpen}
             onClose={() => setQuickOpen(false)}
             onAdded={(ex) => {
-              setExercises((prev) => [...prev, { exerciseName: ex.name, bodyPart: ex.bodyPart, exerciseId: ex._id, sets: [{ weight: 0, reps: 8, clientId: crypto.randomUUID() }], clientId: crypto.randomUUID() }]);
+              setExercises((prev) => [...prev, { 
+                exerciseName: ex.name, 
+                bodyPart: ex.bodyPart as BodyPart, 
+                exerciseId: ex._id, 
+                sets: [{ weight: 0, reps: 8, clientId: crypto.randomUUID() }], 
+                clientId: crypto.randomUUID() 
+              }]);
               setQuickOpen(false);
               showToast(`${t('workout.customExerciseAdded')}：${ex.name}`);
               try { document.getElementById('exercise-bottom')?.scrollIntoView({ behavior: 'smooth' }); } catch { }

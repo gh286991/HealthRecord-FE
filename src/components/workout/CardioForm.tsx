@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { CardioType, getCardioTypeInfo } from './WorkoutTypeSelector';
+import { CardioData } from '@/lib/workoutApi';
 import Button from '@/components/Button';
 import Card from '@/components/Card';
 import IOSDatePicker from '@/components/ios/IOSDatePicker';

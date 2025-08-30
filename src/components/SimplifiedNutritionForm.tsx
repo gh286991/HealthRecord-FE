@@ -9,8 +9,7 @@ import {
   useCreateNutritionRecordMutation, 
   useUpdateNutritionRecordMutation,
   useUploadPhotoMutation,
-  NutritionRecord,
-  FoodItem
+  NutritionRecord
 } from '@/lib/nutritionApi';
 import { getSafeImageProps } from '@/lib/imageUtils';
 import { compressImage } from '@/lib/imageCompress';
@@ -250,7 +249,19 @@ export default function SimplifiedNutritionForm({
               userId: updatedRecord.userId || 'local-user',
               date: updatedRecord.date,
               mealType: updatedRecord.mealType as '早餐' | '午餐' | '晚餐' | '點心',
-              foods: updatedRecord.foods.map((food: FoodItem) => ({
+              foods: updatedRecord.foods.map((food: {
+                foodId?: string;
+                foodName: string;
+                description?: string;
+                quantity?: number;
+                calories?: number;
+                protein?: number;
+                carbohydrates?: number;
+                fat?: number;
+                fiber?: number;
+                sugar?: number;
+                sodium?: number;
+              }) => ({
                 foodId: food.foodId || '',
                 foodName: food.foodName,
                 description: food.description || '',
@@ -311,7 +322,50 @@ export default function SimplifiedNutritionForm({
           };
           records.push(localRecord);
           localStorage.setItem('nutrition-records', JSON.stringify(records));
-          onSuccess?.(localRecord);
+          // 轉換為符合 NutritionRecord 類型的格式
+          const nutritionRecord: NutritionRecord = {
+            _id: localRecord._id,
+            userId: localRecord.userId,
+            date: localRecord.date,
+            mealType: localRecord.mealType as '早餐' | '午餐' | '晚餐' | '點心',
+            foods: localRecord.foods.map((food: {
+              foodId?: string;
+              foodName: string;
+              description?: string;
+              quantity?: number;
+              calories?: number;
+              protein?: number;
+              carbohydrates?: number;
+              fat?: number;
+              fiber?: number;
+              sugar?: number;
+              sodium?: number;
+            }) => ({
+              foodId: food.foodId || '',
+              foodName: food.foodName,
+              description: food.description || '',
+              quantity: food.quantity || 1,
+              calories: food.calories || 0,
+              protein: food.protein || 0,
+              carbohydrates: food.carbohydrates || 0,
+              fat: food.fat || 0,
+              fiber: food.fiber || 0,
+              sugar: food.sugar || 0,
+              sodium: food.sodium || 0,
+            })),
+            totalCalories: localRecord.totalCalories,
+            totalProtein: localRecord.totalProtein,
+            totalCarbohydrates: localRecord.totalCarbohydrates,
+            totalFat: localRecord.totalFat,
+            totalFiber: localRecord.totalFiber,
+            totalSugar: localRecord.totalSugar,
+            totalSodium: localRecord.totalSodium,
+            notes: localRecord.notes,
+            photoUrl: localRecord.photoUrl,
+            createdAt: localRecord.createdAt,
+            updatedAt: localRecord.updatedAt,
+          };
+          onSuccess?.(nutritionRecord);
         }
       }
     } catch (error) {

@@ -15,7 +15,110 @@ export enum WorkoutType {
   Other = 'other'
 }
 
+// 有氧運動類型枚舉
+export enum CardioType {
+  Running = 'running',
+  Cycling = 'cycling',
+  Walking = 'walking',
+  Elliptical = 'elliptical',
+  Rowing = 'rowing',
+  Treadmill = 'treadmill',
+  StairClimber = 'stairclimber',
+  Other = 'other'
+}
 
+// 訓練部位列舉
+export enum BodyPart {
+  Chest = 'chest',
+  Back = 'back',
+  Legs = 'legs',
+  Shoulders = 'shoulders',
+  Arms = 'arms',
+  Core = 'core',
+  FullBody = 'fullbody',
+  Other = 'other',
+}
+
+// 重訓組數數據
+export interface WorkoutSet {
+  weight: number;
+  reps: number;
+  restSeconds?: number;
+  rpe?: number;
+  completed?: boolean;
+}
+
+// 重訓動作數據
+export interface WorkoutExercise {
+  exerciseName: string;
+  bodyPart?: BodyPart;
+  exerciseId: string;
+  sets: WorkoutSet[];
+}
+
+// 重訓專用數據
+export interface ResistanceData {
+  exercises: WorkoutExercise[];
+  totalVolume: number;
+  totalSets: number;
+  totalReps: number;
+  totalRestSeconds: number;
+}
+
+// 有氧運動專用數據
+export interface CardioData {
+  cardioType: CardioType;
+  distance?: number;
+  intensity: number;
+  averageHeartRate?: number;
+  maxHeartRate?: number;
+  caloriesBurned?: number;
+  location?: string;
+}
+
+// 柔韌性/瑜伽專用數據
+export interface FlexibilityData {
+  poses: string[];
+  difficulty?: number;
+  focusAreas: string[];
+  relaxationLevel?: number;
+}
+
+// 運動記錄主體
+export interface WorkoutRecord {
+  _id: string;
+  userId: string;
+  date: string;
+  type: WorkoutType;
+  duration?: number;
+  notes?: string;
+  resistanceData?: ResistanceData;
+  cardioData?: CardioData;
+  flexibilityData?: FlexibilityData;
+  // 保留舊有欄位以維持向後兼容
+  exercises?: WorkoutExercise[];
+  totalVolume?: number;
+  totalSets?: number;
+  totalReps?: number;
+  workoutDurationSeconds?: number;
+  totalRestSeconds?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// 每日運動摘要響應
+export interface DailyWorkoutResponse {
+  date: string;
+  records: WorkoutRecord[];
+  dailyTotals: {
+    totalVolume: number;
+    totalSets: number;
+    totalReps: number;
+    totalDuration: number;
+    recordCount: number;
+    recordsByType: Record<WorkoutType, number>;
+  };
+}
 
 export const workoutApi = createApi({
   reducerPath: 'workoutApi',

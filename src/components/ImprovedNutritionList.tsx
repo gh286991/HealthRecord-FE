@@ -381,7 +381,7 @@ export default function ImprovedNutritionList({ selectedDate, onDateChange, onAd
           setRecordToDelete(null);
           setIsAlertOpen(false);
         }}
-        showCancel={!!recordToDelete}
+        
       />
     </div>
   );
