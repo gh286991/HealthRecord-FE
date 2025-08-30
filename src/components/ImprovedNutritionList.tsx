@@ -12,10 +12,12 @@ import { getSafeImageProps } from '@/lib/imageUtils';
 import IOSCalendar from '@/components/ios/IOSCalendar';
 import IOSWeekStrip from '@/components/ios/IOSWeekStrip';
 import Card from '@/components/Card';
-import QuickMealEntry from './QuickMealEntry';
+import IOSAlertModal from '@/components/ios/IOSAlertModal';
 
 interface ImprovedNutritionListProps {
-  onAddNew: () => void;
+  selectedDate: string;
+  onDateChange: (date: string) => void;
+  onAddNew: (date: string) => void;
   onEdit: (record: NutritionRecord) => void;
 }
 
@@ -26,20 +28,12 @@ const mealTypeIcons = {
   '點心': '🍎',
 };
 
-export default function ImprovedNutritionList({ onEdit }: ImprovedNutritionListProps) {
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-  const [quickMealType, setQuickMealType] = useState<'早餐' | '午餐' | '晚餐' | '點心' | null>(null);
-  const [isMealPickerOpen, setIsMealPickerOpen] = useState(false);
+export default function ImprovedNutritionList({ selectedDate, onDateChange, onAddNew, onEdit }: ImprovedNutritionListProps) {
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
-  // 餐次選擇開啟時鎖定背景滾動
-  useEffect(() => {
-    if (!isMealPickerOpen) return;
-    const original = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = original;
-    };
-  }, [isMealPickerOpen]);
+  const [isAlertOpen, setIsAlertOpen] = useState(false);
+  const [alertInfo, setAlertInfo] = useState({ title: '', message: '' });
+  const [recordToDelete, setRecordToDelete] = useState<string | null>(null);
+
 
   // 月曆開啟時鎖定背景滾動
   useEffect(() => {
@@ -50,6 +44,7 @@ export default function ImprovedNutritionList({ onEdit }: ImprovedNutritionListP
       document.body.style.overflow = original;
     };
   }, [isCalendarOpen]);
+
   const [currentMonth, setCurrentMonth] = useState({
     year: new Date(selectedDate).getFullYear(),
     month: new Date(selectedDate).getMonth() + 1,
@@ -68,7 +63,6 @@ export default function ImprovedNutritionList({ onEdit }: ImprovedNutritionListP
 
   const [deleteNutritionRecord] = useDeleteNutritionRecordMutation();
 
-
   // 監聽選中日期變化，更新當前月份
   useEffect(() => {
     const newYear = new Date(selectedDate).getFullYear();
@@ -78,84 +72,26 @@ export default function ImprovedNutritionList({ onEdit }: ImprovedNutritionListP
     }
   }, [selectedDate, currentMonth]);
 
-  const handleQuickSave = async (mealData: {
-    mealType: string;
-    date: string;
-    foods: Array<{
-      foodName: string;
-      description: string;
-      calories: number;
-    }>;
-    notes?: string;
-  }) => {
-    try {
-      // 創建記錄數據
-      const recordData = {
-        ...mealData,
-        date: selectedDate, // 使用當前選中的日期
-      };
-
-      // 保存到本地存儲
-      const localRecord = {
-        _id: Date.now().toString(),
-        userId: 'local-user',
-        ...recordData,
-        totalCalories: mealData.foods.reduce((sum: number, food) => sum + (food.calories || 0), 0),
-        totalProtein: 0,
-        totalCarbohydrates: 0,
-        totalFat: 0,
-        totalFiber: 0,
-        totalSugar: 0,
-        totalSodium: 0,
-        photoUrl: '',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-
-      const existingRecords = localStorage.getItem('nutrition-records');
-      const records = existingRecords ? JSON.parse(existingRecords) : [];
-      records.push(localRecord);
-      localStorage.setItem('nutrition-records', JSON.stringify(records));
-      
-      setQuickMealType(null);
-      refetchRecords(); // 重新加載記錄
-    } catch (error) {
-      console.error('快速保存失敗:', error);
-      alert('保存失敗，請稍後再試');
-    }
+  const handleDeleteConfirmation = (recordId: string) => {
+    setRecordToDelete(recordId);
+    setAlertInfo({ title: '確認刪除', message: '確定要刪除這筆記錄嗎？' });
+    setIsAlertOpen(true);
   };
 
-  const handleDelete = async (recordId: string) => {
-    if (!confirm('確定要刪除這筆記錄嗎？')) return;
+  const handleDelete = async () => {
+    if (!recordToDelete) return;
 
     try {
-      // 使用 RTK Query mutation 刪除
-      await deleteNutritionRecord(recordId).unwrap();
-      // RTK Query 會自動更新緩存，但為確保也手動觸發重新獲取
+      await deleteNutritionRecord(recordToDelete).unwrap();
       refetchRecords();
-      alert('記錄已刪除');
+      setAlertInfo({ title: '成功', message: '記錄已刪除' });
     } catch (error) {
       console.error('刪除失敗:', error);
-      // 如果 API 失敗，fallback 到本地存儲刪除
-      try {
-        const existingRecords = localStorage.getItem('nutrition-records');
-        if (existingRecords) {
-          const allRecords: NutritionRecord[] = JSON.parse(existingRecords);
-          const filteredRecords = allRecords.filter(record => record._id !== recordId);
-          localStorage.setItem('nutrition-records', JSON.stringify(filteredRecords));
-        }
-        // 手動觸發重新獲取資料
-        refetchRecords();
-        alert('記錄已刪除');
-      } catch (localError) {
-        console.error('本地刪除失敗:', localError);
-        alert('刪除失敗，請稍後再試');
-      }
+      setAlertInfo({ title: '失敗', message: '刪除失敗，請稍後再試' });
+    } finally {
+      setRecordToDelete(null);
+      setIsAlertOpen(true);
     }
-  };
-
-  const getTotalCaloriesForDate = () => {
-    return records.reduce((sum, record) => sum + (record.totalCalories || 0), 0);
   };
 
   const getDailyTotals = () => {
@@ -185,6 +121,16 @@ export default function ImprovedNutritionList({ onEdit }: ImprovedNutritionListP
     }
   };
 
+  const isToday = (dateString: string) => {
+    const today = new Date();
+    const date = new Date(dateString);
+    return today.getFullYear() === date.getFullYear() &&
+           today.getMonth() === date.getMonth() &&
+           today.getDate() === date.getDate();
+  };
+
+  const summaryLabel = isToday(selectedDate) ? '今日' : '總計';
+
   if (loading) {
     return (
       <div className="flex justify-center items-center py-8">
@@ -202,36 +148,50 @@ export default function ImprovedNutritionList({ onEdit }: ImprovedNutritionListP
       {/* 日期選擇器和統計 */}
       <div className="mb-6">
         <div className="flex flex-col gap-4 items-center">
-          <div className="w-full max-w-2xl flex items-center justify-between">
-            <button
-              onClick={() => setIsCalendarOpen(true)}
-              className="p-2 rounded-lg hover:bg-gray-100 text-gray-700"
-              aria-label="開啟日曆"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-            </button>
-            <div className="text-xl font-bold text-gray-900">今天 {new Date(selectedDate).toLocaleDateString('zh-TW', { month: 'numeric', day: 'numeric'})}</div>
-            <button
-              onClick={() => setIsMealPickerOpen(true)}
-              className="p-2 rounded-lg hover:bg-gray-100 text-gray-700"
-              aria-label="新增"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v12m6-6H6" />
-              </svg>
-            </button>
+          <div className="w-full max-w-2xl grid grid-cols-3 items-center">
+            <div className="flex items-center gap-2 justify-start">
+              <button
+                onClick={() => setIsCalendarOpen(true)}
+                className="p-2 rounded-lg hover:bg-gray-100 text-gray-700"
+                aria-label="開啟日曆"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+              </button>
+              <button
+                onClick={() => onDateChange(new Date().toISOString().split('T')[0])}
+                className="p-2 rounded-lg hover:bg-gray-100 text-gray-700"
+                aria-label="回到今天"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h4"/><path d="M12 18a6 6 0 1 1 0-12 6 6 0 0 1 0 12Z"/><path d="M12 12v4h4"/></svg>
+              </button>
+            </div>
+            <div className="flex items-center justify-center text-xl font-bold text-gray-900">
+              {isToday(selectedDate) && <span className="mr-2">今天</span>}
+              <span>{new Date(selectedDate).toLocaleDateString('zh-TW', { month: 'numeric', day: 'numeric' })}</span>
+            </div>
+            <div className="flex justify-end">
+              <button
+                onClick={() => onAddNew(selectedDate)}
+                className="p-2 rounded-lg hover:bg-gray-100 text-gray-700"
+                aria-label="新增"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v12m6-6H6" />
+                </svg>
+              </button>
+            </div>
           </div>
           <div className="w-full max-w-2xl">
-            <IOSWeekStrip selectedDate={selectedDate} onChange={setSelectedDate} />
+            <IOSWeekStrip selectedDate={selectedDate} onChange={onDateChange} />
           </div>
           <div className="w-full max-w-2xl">
             <Card className="p-3">
               <div className="grid grid-cols-7 divide-x divide-gray-100">
                 <div className="text-center px-2">
-                  <div className="text-[10px] text-gray-500">攝取 / 今日</div>
-                  <div className="text-lg font-semibold text-green-600">{getTotalCaloriesForDate()}</div>
+                  <div className="text-[10px] text-gray-500">攝取 / {summaryLabel}</div>
+                  <div className="text-lg font-semibold text-green-600">{getDailyTotals().totalCalories}</div>
                   <div className="text-[10px] text-gray-400">卡路里</div>
                 </div>
                 {(() => {
@@ -239,32 +199,32 @@ export default function ImprovedNutritionList({ onEdit }: ImprovedNutritionListP
                   return (
                     <>
                       <div className="text-center px-2">
-                        <div className="text-[10px] text-gray-500">今日</div>
+                        <div className="text-[10px] text-gray-500">{summaryLabel}</div>
                         <div className="text-base font-semibold text-gray-800">{totals.totalProtein}</div>
                         <div className="text-[10px] text-gray-400">蛋白質</div>
                       </div>
                       <div className="text-center px-2">
-                        <div className="text-[10px] text-gray-500">今日</div>
+                        <div className="text-[10px] text-gray-500">{summaryLabel}</div>
                         <div className="text-base font-semibold text-gray-800">{totals.totalCarbohydrates}</div>
                         <div className="text-[10px] text-gray-400">碳水</div>
                       </div>
                       <div className="text-center px-2">
-                        <div className="text-[10px] text-gray-500">今日</div>
+                        <div className="text-[10px] text-gray-500">{summaryLabel}</div>
                         <div className="text-base font-semibold text-gray-800">{totals.totalFat}</div>
                         <div className="text-[10px] text-gray-400">脂肪</div>
                       </div>
                       <div className="text-center px-2">
-                        <div className="text-[10px] text-gray-500">今日</div>
+                        <div className="text-[10px] text-gray-500">{summaryLabel}</div>
                         <div className="text-base font-semibold text-gray-800">{totals.totalFiber}</div>
                         <div className="text-[10px] text-gray-400">纖維</div>
                       </div>
                       <div className="text-center px-2">
-                        <div className="text-[10px] text-gray-500">今日</div>
+                        <div className="text-[10px] text-gray-500">{summaryLabel}</div>
                         <div className="text-base font-semibold text-gray-800">{totals.totalSugar}</div>
                         <div className="text-[10px] text-gray-400">糖分</div>
                       </div>
                       <div className="text-center px-2">
-                        <div className="text-[10px] text-gray-500">今日</div>
+                        <div className="text-[10px] text-gray-500">{summaryLabel}</div>
                         <div className="text-base font-semibold text-gray-800">{totals.totalSodium}</div>
                         <div className="text-[10px] text-gray-400">鈉</div>
                       </div>
@@ -330,7 +290,7 @@ export default function ImprovedNutritionList({ onEdit }: ImprovedNutritionListP
                       </svg>
                     </button>
                     <button
-                      onClick={() => handleDelete(record._id)}
+                      onClick={() => handleDeleteConfirmation(record._id)}
                       className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                     >
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -386,45 +346,6 @@ export default function ImprovedNutritionList({ onEdit }: ImprovedNutritionListP
         )}
       </div>
 
-      {/* 快速記錄彈窗 */}
-      {quickMealType && (
-        <QuickMealEntry
-          mealType={quickMealType}
-          onSave={handleQuickSave}
-          onCancel={() => setQuickMealType(null)}
-        />
-      )}
-
-      {/* 餐次選擇彈窗 */}
-      {isMealPickerOpen && (
-        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4 text-center">選擇餐次</h3>
-            <div className="grid grid-cols-2 gap-3">
-              {(Object.keys(mealTypeIcons) as Array<keyof typeof mealTypeIcons>).map((mealType) => (
-                <button
-                  key={mealType}
-                  onClick={() => {
-                    setIsMealPickerOpen(false);
-                    setQuickMealType(mealType);
-                  }}
-                  className="bg-gradient-to-br from-green-50 to-blue-50 hover:from-green-100 hover:to-blue-100 border-2 border-green-200 hover:border-green-300 rounded-xl p-4 text-center transition-all duration-200"
-                >
-                  <div className="text-2xl mb-1">{mealTypeIcons[mealType]}</div>
-                  <div className="text-sm font-medium text-gray-700">{mealType}</div>
-                </button>
-              ))}
-            </div>
-            <button
-              onClick={() => setIsMealPickerOpen(false)}
-              className="mt-4 w-full py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
-            >
-              取消
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* 月曆彈窗（僅切換日期） */}
       {isCalendarOpen && (
         <div 
@@ -436,13 +357,32 @@ export default function ImprovedNutritionList({ onEdit }: ImprovedNutritionListP
               selectedDate={selectedDate}
               markedDates={markedDates}
               onChange={(d) => {
-                setSelectedDate(d);
+                onDateChange(d);
                 setIsCalendarOpen(false);
               }}
             />
           </div>
         </div>
       )}
+
+      <IOSAlertModal
+        open={isAlertOpen}
+        title={alertInfo.title}
+        message={alertInfo.message}
+        confirmText="確定"
+        onConfirm={() => {
+          if (recordToDelete) {
+            handleDelete();
+          } else {
+            setIsAlertOpen(false);
+          }
+        }}
+        onCancel={() => {
+          setRecordToDelete(null);
+          setIsAlertOpen(false);
+        }}
+        showCancel={!!recordToDelete}
+      />
     </div>
   );
 }

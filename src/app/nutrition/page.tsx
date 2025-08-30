@@ -12,6 +12,7 @@ type ViewMode = 'list' | 'add' | 'edit';
 export default function NutritionPage() {
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [editingRecord, setEditingRecord] = useState<NutritionRecord | null>(null);
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const router = useRouter();
 
@@ -25,8 +26,9 @@ export default function NutritionPage() {
     }
   }, [router]);
 
-  const handleAddNew = () => {
+  const handleAddNew = (date: string) => {
     setEditingRecord(null);
+    setSelectedDate(date);
     setViewMode('add');
   };
 
@@ -68,6 +70,8 @@ export default function NutritionPage() {
       <div className="container mx-auto">
         {viewMode === 'list' && (
           <ImprovedNutritionList 
+            selectedDate={selectedDate}
+            onDateChange={setSelectedDate}
             onAddNew={handleAddNew}
             onEdit={handleEdit}
           />
@@ -97,7 +101,7 @@ export default function NutritionPage() {
                 })),
                 notes: editingRecord.notes || '',
                 photoUrl: editingRecord.photoUrl || '',
-              } : undefined}
+              } : { date: selectedDate }}
             />
           </div>
         )}
