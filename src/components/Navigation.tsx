@@ -66,8 +66,9 @@ function NavigationContent() {
               <div className="flex flex-col">
                 <Link href="/nutrition" onClick={handleNavItemClick} {...item(0, 'text-gray-700 hover:text-gray-900 hover:bg-gray-50')}>飲食紀錄</Link>
                 <Link href="/workout" onClick={handleNavItemClick} {...item(1, 'text-gray-700 hover:text-gray-900 hover:bg-gray-50')}>健身紀錄</Link>
-                <Link href="/workout/exercises" onClick={handleNavItemClick} {...item(2, 'text-gray-700 hover:text-gray-900 hover:bg-gray-50')}>動作管理</Link>
-                <Link href="/profile" onClick={handleNavItemClick} {...item(3, 'text-gray-700 hover:text-gray-900 hover:bg-gray-50')}>個人資料</Link>
+                <Link href="/schedule" onClick={handleNavItemClick} {...item(2, 'text-gray-700 hover:text-gray-900 hover:bg-gray-50')}>課表安排</Link>
+                <Link href="/workout/exercises" onClick={handleNavItemClick} {...item(3, 'text-gray-700 hover:text-gray-900 hover:bg-gray-50')}>動作管理</Link>
+                <Link href="/profile" onClick={handleNavItemClick} {...item(4, 'text-gray-700 hover:text-gray-900 hover:bg-gray-50')}>個人資料</Link>
               </div>
               <div className="mt-auto pb-8 px-4">
                 <div className={`${enter}`} style={{ transitionDelay: `${4 * 30}ms` }}>
@@ -91,8 +92,9 @@ function NavigationContent() {
           <>
             <Link href="/nutrition" onClick={handleNavItemClick} {...item(0, 'text-gray-700 hover:text-gray-900')}>飲食紀錄</Link>
             <Link href="/workout" onClick={handleNavItemClick} {...item(1, 'text-gray-700 hover:text-gray-900')}>健身紀錄</Link>
-            <Link href="/workout/exercises" onClick={handleNavItemClick} {...item(2, 'text-gray-700 hover:text-gray-900')}>動作管理</Link>
-            <Link href="/profile" onClick={handleNavItemClick} {...item(3, 'text-gray-700 hover:text-gray-900')}>個人資料</Link>
+            <Link href="/schedule" onClick={handleNavItemClick} {...item(2, 'text-gray-700 hover:text-gray-900')}>課表安排</Link>
+            <Link href="/workout/exercises" onClick={handleNavItemClick} {...item(3, 'text-gray-700 hover:text-gray-900')}>動作管理</Link>
+            <Link href="/profile" onClick={handleNavItemClick} {...item(4, 'text-gray-700 hover:text-gray-900')}>個人資料</Link>
             <div className="px-3 py-2 sm:px-0 sm:py-0">
               <Button onClick={handleLogout} className="!px-4 !py-2 !text-sm w-full sm:w-auto" variant="secondary">登出</Button>
             </div>
@@ -118,6 +120,8 @@ function NavigationContent() {
         return '飲食紀錄';
       case '/workout':
         return '健身紀錄';
+      case '/schedule':
+        return '課表規劃';
       case '/workout/exercises':
         return '動作管理';
       case '/profile':

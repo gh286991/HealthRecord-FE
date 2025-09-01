@@ -107,15 +107,36 @@ export async function compressImage(
   if (!ctx) return file;
   ctx.drawImage(image, 0, 0, width, height);
 
+  // 檢查瀏覽器對目標格式支援度（iOS Safari 對 image/webp 支援歷史較不一致）
+  const testCanvas = document.createElement('canvas');
+  const webpSupported = testCanvas.toDataURL('image/webp').startsWith('data:image/webp');
+  let targetType = mimeType;
+  if (mimeType === 'image/webp' && !webpSupported) {
+    // 回退到 JPEG 以便品質可調整壓縮
+    targetType = 'image/jpeg';
+  }
+
   // 嘗試輸出為指定格式與品質，若超出大小則逐步降低品質（最少 0.5）
   let currentQuality = quality;
-  let blob = await canvasToBlob(canvas, mimeType, currentQuality);
+  let blob = await canvasToBlob(canvas, targetType, currentQuality);
+
+  // 若瀏覽器忽略目標格式（如請求 webp 但實際給 png），改用 JPEG 再試
+  if (blob.type !== targetType && targetType === 'image/webp') {
+    targetType = 'image/jpeg';
+    blob = await canvasToBlob(canvas, targetType, currentQuality);
+  }
+
+  // 若為 PNG（品質參數無效）且仍過大，嘗試改為 JPEG 以利用有損壓縮
+  if (blob.size > maxBytes && blob.type === 'image/png') {
+    targetType = 'image/jpeg';
+    blob = await canvasToBlob(canvas, targetType, currentQuality);
+  }
 
   // 若仍大於 maxBytes，降低品質重試（最多 3 次）
   let attempts = 0;
   while (blob.size > maxBytes && currentQuality > 0.5 && attempts < 3) {
     currentQuality = Math.max(0.5, currentQuality - 0.15);
-    blob = await canvasToBlob(canvas, mimeType, currentQuality);
+    blob = await canvasToBlob(canvas, targetType, currentQuality);
     attempts += 1;
   }
 
@@ -129,7 +150,7 @@ export async function compressImage(
     ? 'jpg'
     : finalBlob.type.includes('png')
     ? 'png'
-    : (file.name.split('.').pop() || 'jpg');
+    : (file.name.split('.') .pop() || 'jpg');
   const newName = renameFile(file, newExt);
 
   return new File([finalBlob], newName, { type: finalBlob.type, lastModified: Date.now() });

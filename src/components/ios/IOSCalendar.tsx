@@ -4,10 +4,12 @@ import { useState, useMemo, useEffect } from 'react';
 interface IOSCalendarProps {
   selectedDate: string; // YYYY-MM-DD
   markedDates?: string[]; // Array of dates with records, YYYY-MM-DD
+  pendingDates?: string[]; // 課表未開始日期 YYYY-MM-DD
   onChange: (date: string) => void;
+  onMonthChange?: (year: number, month: number) => void; // 月份改變回呼
 }
 
-const IOSCalendar = ({ selectedDate, markedDates = [], onChange }: IOSCalendarProps) => {
+const IOSCalendar = ({ selectedDate, markedDates = [], pendingDates = [], onChange, onMonthChange }: IOSCalendarProps) => {
   const [currentDate, setCurrentDate] = useState(new Date(selectedDate));
 
   useEffect(() => {
@@ -19,11 +21,15 @@ const IOSCalendar = ({ selectedDate, markedDates = [], onChange }: IOSCalendarPr
   const startingDayOfWeek = useMemo(() => firstDayOfMonth.getDay(), [firstDayOfMonth]); // 0 (Sun) to 6 (Sat)
 
   const prevMonth = () => {
-    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
+    const next = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
+    setCurrentDate(next);
+    onMonthChange?.(next.getFullYear(), next.getMonth() + 1);
   };
 
   const nextMonth = () => {
-    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
+    const next = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1);
+    setCurrentDate(next);
+    onMonthChange?.(next.getFullYear(), next.getMonth() + 1);
   };
 
   const handleDateClick = (day: number) => {
@@ -43,6 +49,7 @@ const IOSCalendar = ({ selectedDate, markedDates = [], onChange }: IOSCalendarPr
     const dateStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
     const isSelected = dateStr === selectedDate;
     const isMarked = markedDates.includes(dateStr);
+    const isPending = pendingDates.includes(dateStr);
 
     days.push(
       <div key={i} className="flex flex-col items-center justify-center">
@@ -54,7 +61,7 @@ const IOSCalendar = ({ selectedDate, markedDates = [], onChange }: IOSCalendarPr
         >
           {i}
         </button>
-        <div className={`w-1.5 h-1.5 rounded-full mt-0.5 ${isMarked ? 'bg-blue-500' : 'bg-transparent'}`}></div>
+        <div className={`w-1.5 h-1.5 rounded-full mt-0.5 ${isPending ? 'bg-orange-500' : (isMarked ? 'bg-blue-500' : 'bg-transparent')}`}></div>
       </div>
     );
   }
