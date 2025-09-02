@@ -154,6 +154,16 @@ export const nutritionApiRtk = createApi({
       },
       invalidatesTags: ['NutritionRecord'],
     }),
+
+    // AI分析照片
+    analyzePhoto: builder.mutation<{ foods: FoodItem[] }, FormData>({
+      query: (formData) => ({
+        url: '/diet-records/analyze-photo',
+        method: 'POST',
+        body: formData,
+      }),
+      // 這個操作不會直接修改伺服器上的記錄，所以不需要 invalidatesTags
+    }),
   }),
 });
 
@@ -165,4 +175,5 @@ export const {
   useDeleteNutritionRecordMutation,
   useGetMarkedDatesQuery,
   useUploadPhotoMutation,
+  useAnalyzePhotoMutation, // 新增導出
 } = nutritionApiRtk;

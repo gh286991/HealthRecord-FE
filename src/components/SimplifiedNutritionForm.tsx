@@ -9,11 +9,13 @@ import {
   useCreateNutritionRecordMutation, 
   useUpdateNutritionRecordMutation,
   useUploadPhotoMutation,
+  useAnalyzePhotoMutation, // 引入新的 hook
   NutritionRecord
 } from '@/lib/nutritionApi';
 import { getSafeImageProps } from '@/lib/imageUtils';
 import { compressImage } from '@/lib/imageCompress';
 import IOSAlertModal from '@/components/ios/IOSAlertModal';
+import LoadingModal from '@/components/ios/LoadingModal';
 
 // 簡化的驗證 schema - 食物變成可選
 const simplifiedNutritionSchema = z.object({
@@ -77,10 +79,15 @@ export default function SimplifiedNutritionForm({
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // AI 分析相關狀態
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
+
   // RTK Query mutations
   const [createNutritionRecord] = useCreateNutritionRecordMutation();
   const [updateNutritionRecord] = useUpdateNutritionRecordMutation();
   const [uploadPhoto] = useUploadPhotoMutation();
+  const [analyzePhoto] = useAnalyzePhotoMutation(); // 使用新的 mutation
 
   const form = useForm({
     resolver: zodResolver(simplifiedNutritionSchema),
@@ -132,6 +139,41 @@ export default function SimplifiedNutritionForm({
       setUploadedPhoto(e.target?.result as string);
     };
     reader.readAsDataURL(file);
+  };
+
+  // 修改：處理 AI 分析的函式，接收一個 file 參數
+  const handleAnalyze = async (file: File) => {
+    if (!file) return;
+
+    setIsAnalyzing(true);
+    setAnalysisError(null);
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const result = await analyzePhoto(formData).unwrap();
+      if (result.foods && result.foods.length > 0) {
+        replace(result.foods.map(food => ({
+          foodName: food.foodName || '',
+          description: food.description || '',
+          calories: food.calories || 0,
+          protein: food.protein || 0,
+          carbohydrates: food.carbohydrates || 0,
+          fat: food.fat || 0,
+          fiber: food.fiber || 0,
+          sugar: food.sugar || 0,
+          sodium: food.sodium || 0,
+        })));
+      } else {
+        setAnalysisError('AI 未能從圖片中辨識出任何食物。');
+      }
+    } catch (error) {
+      console.error('AI 分析失敗:', error);
+      setAnalysisError('AI 分析失敗，請稍後再試或手動輸入。');
+    } finally {
+      setIsAnalyzing(false);
+    }
   };
 
   const onSubmit = async (data: z.infer<typeof simplifiedNutritionSchema>) => {
@@ -398,6 +440,7 @@ export default function SimplifiedNutritionForm({
 
   return (
     <div className="bg-white rounded-2xl shadow-xl p-6 max-w-2xl mx-auto">
+      <LoadingModal open={isAnalyzing} message="AI 分析中，請稍候..." />
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-2xl font-bold text-gray-900">簡易飲食記錄</h2>
         {onCancel && (
@@ -598,11 +641,13 @@ export default function SimplifiedNutritionForm({
             <input
               type="file"
               ref={fileInputRef}
-              accept="image/jpeg,image/png"
+              accept="image/jpeg,image/png,image/webp,image/gif"
               className="hidden"
               onChange={(e) => {
-                if (e.target.files && e.target.files[0]) {
-                  handlePhotoPreview(e.target.files[0]);
+                const file = e.target.files?.[0];
+                if (file) {
+                  handlePhotoPreview(file);
+                  handleAnalyze(file); // 自動觸發分析
                 }
               }}
             />
@@ -614,9 +659,13 @@ export default function SimplifiedNutritionForm({
               <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-4l-2-2H7a2 2 0 00-2 2v1z" />
               </svg>
-              選擇照片
+              {uploadedPhoto ? '更換照片' : '選擇照片'}
             </button>
           </div>
+
+          {analysisError && (
+            <p className="mt-2 text-sm text-red-600 text-center">{analysisError}</p>
+          )}
 
           {uploadedPhoto && (
             <div className="mt-4 text-center">
