@@ -7,6 +7,7 @@ import { z } from 'zod';
 import Image from 'next/image';
 import { 
   useCreateNutritionRecordMutation, 
+  useCreateDraftRecordMutation,
   useUpdateNutritionRecordMutation,
   useUploadPhotoMutation,
   useAnalyzePhotoMutation, // 引入新的 hook
@@ -88,6 +89,7 @@ export default function SimplifiedNutritionForm({
 
   // RTK Query mutations
   const [createNutritionRecord] = useCreateNutritionRecordMutation();
+  const [createDraftRecord] = useCreateDraftRecordMutation();
   const [updateNutritionRecord] = useUpdateNutritionRecordMutation();
   const [uploadPhoto] = useUploadPhotoMutation();
   const [analyzePhoto] = useAnalyzePhotoMutation(); // 使用新的 mutation
@@ -163,14 +165,15 @@ export default function SimplifiedNutritionForm({
     let tempRecordId = currentRecordId;
 
     try {
-      // 步驟 1: 如果是新紀錄，先建立一個臨時紀錄以獲取 ID
+      // 步驟 1: 如果是新紀錄，先建立一個草稿紀錄以獲取 ID
       if (!tempRecordId) {
-        const initialRecord = await createNutritionRecord({
+        const draftRecord = await createDraftRecord({
           date: form.getValues('date'),
           mealType: form.getValues('mealType'),
           foods: [], // 初始為空
+          isDraft: true, // 明確標記為草稿
         }).unwrap();
-        tempRecordId = initialRecord._id;
+        tempRecordId = draftRecord._id;
         setCurrentRecordId(tempRecordId);
       }
 
@@ -237,13 +240,14 @@ export default function SimplifiedNutritionForm({
 
       let finalRecord;
       if (currentRecordId) {
-        // 更新現有記錄 (通常是文字部分)
+        // 更新現有記錄 (可能是草稿或正式記錄)
         const updatePayload: UpdateNutritionRecord = {
           date: data.date,
           mealType: data.mealType,
           notes: data.notes,
           photoUrl: data.photoUrl,
           foods: normalizedFoods,
+          isDraft: false, // 確保轉為正式記錄
         };
         finalRecord = await updateNutritionRecord({ id: currentRecordId, data: updatePayload }).unwrap();
         setShowSuccessModal(true);
@@ -255,6 +259,7 @@ export default function SimplifiedNutritionForm({
           notes: data.notes,
           photoUrl: data.photoUrl,
           foods: normalizedFoods,
+          isDraft: false, // 確保為正式記錄
         };
         finalRecord = await createNutritionRecord(createPayload).unwrap();
       }

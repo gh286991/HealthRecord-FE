@@ -24,6 +24,7 @@ export interface CreateNutritionRecord {
   foods: FoodItem[];
   notes?: string;
   photoUrl?: string;
+  isDraft?: boolean;
 }
 
 export interface UpdateNutritionRecord {
@@ -32,6 +33,7 @@ export interface UpdateNutritionRecord {
   foods?: FoodItem[];
   notes?: string;
   photoUrl?: string;
+  isDraft?: boolean;
 }
 
 export interface NutritionRecord {
@@ -49,6 +51,7 @@ export interface NutritionRecord {
   totalSodium: number;
   notes?: string;
   photoUrl?: string;
+  isDraft?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -92,6 +95,16 @@ export const nutritionApiRtk = createApi({
         body: data,
       }),
       invalidatesTags: ['NutritionRecord'],
+    }),
+
+    // 創建草稿飲食記錄
+    createDraftRecord: builder.mutation<NutritionRecord, CreateNutritionRecord>({
+      query: (data) => ({
+        url: '/diet-records/draft',
+        method: 'POST',
+        body: data,
+      }),
+      // 草稿記錄不會在列表中顯示，所以不需要 invalidatesTags
     }),
 
     // 更新飲食記錄
@@ -171,6 +184,7 @@ export const nutritionApiRtk = createApi({
 export const {
   useGetNutritionRecordsQuery,
   useCreateNutritionRecordMutation,
+  useCreateDraftRecordMutation,
   useUpdateNutritionRecordMutation,
   useDeleteNutritionRecordMutation,
   useGetMarkedDatesQuery,
