@@ -10,7 +10,10 @@ import {
   useUpdateNutritionRecordMutation,
   useUploadPhotoMutation,
   useAnalyzePhotoMutation, // 引入新的 hook
-  NutritionRecord
+  NutritionRecord,
+  CreateNutritionRecord,
+  UpdateNutritionRecord,
+  FoodItem,
 } from '@/lib/nutritionApi';
 import { getSafeImageProps } from '@/lib/imageUtils';
 import { compressImage } from '@/lib/imageCompress';
@@ -133,6 +136,14 @@ export default function SimplifiedNutritionForm({
     }
   }, [initialData, reset, replace]);
 
+  
+  const [currentRecordId, setCurrentRecordId] = useState<string | undefined>(recordId);
+
+  // 當 initialData 或 recordId prop 變化時，同步更新內部 state
+  useEffect(() => {
+    setCurrentRecordId(recordId);
+  }, [recordId]);
+
   const handlePhotoPreview = (file: File) => {
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -141,20 +152,48 @@ export default function SimplifiedNutritionForm({
     reader.readAsDataURL(file);
   };
 
-  // 修改：處理 AI 分析的函式，接收一個 file 參數
-  const handleAnalyze = async (file: File) => {
+  // --- 新的核心流程 ---
+  const handleFileChange = async (file: File | null) => {
     if (!file) return;
 
     setIsAnalyzing(true);
     setAnalysisError(null);
+    handlePhotoPreview(file);
 
-    const formData = new FormData();
-    formData.append('file', file);
+    let tempRecordId = currentRecordId;
 
     try {
-      const result = await analyzePhoto(formData).unwrap();
-      if (result.foods && result.foods.length > 0) {
-        replace(result.foods.map(food => ({
+      // 步驟 1: 如果是新紀錄，先建立一個臨時紀錄以獲取 ID
+      if (!tempRecordId) {
+        const initialRecord = await createNutritionRecord({
+          date: form.getValues('date'),
+          mealType: form.getValues('mealType'),
+          foods: [], // 初始為空
+        }).unwrap();
+        tempRecordId = initialRecord._id;
+        setCurrentRecordId(tempRecordId);
+      }
+
+      // 步驟 2: 壓縮並上傳圖片
+      const compressedFile = await compressImage(file, {
+        maxWidth: 1600,
+        maxHeight: 1600,
+        quality: 0.8,
+        mimeType: 'image/webp',
+      });
+      
+      const uploadResult = await uploadPhoto({ id: tempRecordId, file: compressedFile }).unwrap();
+      const { photoUrl } = uploadResult;
+      
+      setUploadedPhoto(photoUrl); // 更新預覽為遠端 URL
+      form.setValue('photoUrl', photoUrl);
+
+      // 步驟 3: 使用獲取到的 URL 進行 AI 分析
+      const analysisResult = await analyzePhoto({ photoUrl }).unwrap();
+
+      // 步驟 4: 使用分析結果更新紀錄
+      if (analysisResult.foods && analysisResult.foods.length > 0) {
+        const foodsToUpdate = analysisResult.foods.map(food => ({
           foodName: food.foodName || '',
           description: food.description || '',
           calories: food.calories || 0,
@@ -164,13 +203,17 @@ export default function SimplifiedNutritionForm({
           fiber: food.fiber || 0,
           sugar: food.sugar || 0,
           sodium: food.sodium || 0,
-        })));
+        }));
+        
+        replace(foodsToUpdate); // 更新 UI
+        await updateNutritionRecord({ id: tempRecordId, data: { foods: foodsToUpdate } }).unwrap();
       } else {
         setAnalysisError('AI 未能從圖片中辨識出任何食物。');
       }
+
     } catch (error) {
-      console.error('AI 分析失敗:', error);
-      setAnalysisError('AI 分析失敗，請稍後再試或手動輸入。');
+      console.error('圖片處理與分析流程失敗:', error);
+      setAnalysisError('處理失敗，請稍後再試或手動輸入。');
     } finally {
       setIsAnalyzing(false);
     }
@@ -178,238 +221,44 @@ export default function SimplifiedNutritionForm({
 
   const onSubmit = async (data: z.infer<typeof simplifiedNutritionSchema>) => {
     setIsSubmitting(true);
-    console.log('提交資料:', { data, recordId }); // 調試用
     try {
-      // 準備API所需的數據格式 - 根據新的schema格式
-      const recordData = {
-        date: data.date,
-        mealType: data.mealType,
-        foods: data.foods.map(food => ({
-          foodName: food.foodName,
-          description: food.description || '',
-          calories: food.calories || 0,
-          protein: food.protein || 0,
-          carbohydrates: food.carbohydrates || 0,
-          fat: food.fat || 0,
-          fiber: food.fiber || 0,
-          sugar: food.sugar || 0,
-          sodium: food.sodium || 0,
-        })),
-        notes: data.notes,
-      };
+      // 正規化 foods 以符合 API 的必填數值欄位
+      const normalizedFoods: FoodItem[] = (data.foods || []).map((f) => ({
+        foodName: f.foodName,
+        description: f.description ?? '',
+        calories: f.calories ?? 0,
+        protein: f.protein ?? 0,
+        carbohydrates: f.carbohydrates ?? 0,
+        fat: f.fat ?? 0,
+        fiber: f.fiber ?? 0,
+        sugar: f.sugar ?? 0,
+        sodium: f.sodium ?? 0,
+      }));
 
-      let newRecord;
-      let photoFile = fileInputRef.current?.files?.[0];
-
-      // 創建或更新記錄
-      try {
-        if (recordId) {
-          // 更新現有記錄
-          console.log('執行更新記錄，ID:', recordId, '資料:', recordData);
-          newRecord = await updateNutritionRecord({ id: recordId, data: recordData }).unwrap();
-          console.log('更新結果:', newRecord);
-        } else {
-          // 創建新記錄
-          console.log('執行創建記錄，資料:', recordData);
-          newRecord = await createNutritionRecord(recordData).unwrap();
-          console.log('創建結果:', newRecord);
-        }
-        
-        // 如果有圖片，先壓縮再上傳
-        if (photoFile && newRecord._id) {
-          try {
-            photoFile = await compressImage(photoFile, {
-              maxWidth: 1600,
-              maxHeight: 1600,
-              quality: 0.8,
-              mimeType: 'image/webp',
-              maxBytes: 1.5 * 1024 * 1024,
-            });
-          } catch {
-            console.warn('圖片壓縮失敗，改用原圖上傳');
-          }
-          try {
-            const photoResult = await uploadPhoto({ id: newRecord._id, file: photoFile }).unwrap();
-            newRecord.photoUrl = photoResult.photoUrl; // 更新記錄的photoUrl
-            console.log('圖片上傳成功');
-          } catch (uploadError) {
-            console.warn('圖片上傳失敗，但記錄已保存:', uploadError);
-          }
-        }
-        
-        onSuccess?.(newRecord);
-        
-        // 如果是編輯模式，顯示成功提示
-        if (recordId) {
-          setShowSuccessModal(true);
-        }
-        
-      } catch (apiError) {
-        console.warn('API不可用，保存到本地存儲:', apiError);
-        
-        // 本地存儲 fallback
-        const existingRecords = localStorage.getItem('nutrition-records');
-        const records = existingRecords ? JSON.parse(existingRecords) : [];
-        
-        if (recordId) {
-          // 更新現有記錄
-          const recordIndex = records.findIndex((r: { _id: string }) => r._id === recordId);
-          if (recordIndex !== -1) {
-            const updatedRecord = {
-              ...records[recordIndex],
-              date: data.date,
-              mealType: data.mealType,
-              foods: data.foods.map(food => ({
-                foodId: '',
-                foodName: food.foodName,
-                quantity: 1,
-                calories: food.calories || 0,
-                protein: food.protein || 0,
-                carbohydrates: food.carbohydrates || 0,
-                fat: food.fat || 0,
-                fiber: food.fiber || 0,
-                sugar: food.sugar || 0,
-                sodium: food.sodium || 0,
-                description: food.description || '',
-              })),
-              notes: data.notes,
-              totalCalories: data.foods.reduce((sum, food) => sum + (food.calories || 0), 0),
-              totalProtein: data.foods.reduce((sum, food) => sum + (food.protein || 0), 0),
-              totalCarbohydrates: data.foods.reduce((sum, food) => sum + (food.carbohydrates || 0), 0),
-              totalFat: data.foods.reduce((sum, food) => sum + (food.fat || 0), 0),
-              totalFiber: data.foods.reduce((sum, food) => sum + (food.fiber || 0), 0),
-              totalSugar: data.foods.reduce((sum, food) => sum + (food.sugar || 0), 0),
-              totalSodium: data.foods.reduce((sum, food) => sum + (food.sodium || 0), 0),
-              photoUrl: uploadedPhoto || records[recordIndex].photoUrl,
-              updatedAt: new Date().toISOString(),
-            };
-            records[recordIndex] = updatedRecord;
-            localStorage.setItem('nutrition-records', JSON.stringify(records));
-            // 轉換為符合 NutritionRecord 類型的格式
-            const nutritionRecord: NutritionRecord = {
-              _id: updatedRecord._id,
-              userId: updatedRecord.userId || 'local-user',
-              date: updatedRecord.date,
-              mealType: updatedRecord.mealType as '早餐' | '午餐' | '晚餐' | '點心',
-              foods: updatedRecord.foods.map((food: {
-                foodId?: string;
-                foodName: string;
-                description?: string;
-                quantity?: number;
-                calories?: number;
-                protein?: number;
-                carbohydrates?: number;
-                fat?: number;
-                fiber?: number;
-                sugar?: number;
-                sodium?: number;
-              }) => ({
-                foodId: food.foodId || '',
-                foodName: food.foodName,
-                description: food.description || '',
-                quantity: food.quantity || 1,
-                calories: food.calories || 0,
-                protein: food.protein || 0,
-                carbohydrates: food.carbohydrates || 0,
-                fat: food.fat || 0,
-                fiber: food.fiber || 0,
-                sugar: food.sugar || 0,
-                sodium: food.sodium || 0,
-              })),
-              totalCalories: updatedRecord.totalCalories,
-              totalProtein: updatedRecord.totalProtein,
-              totalCarbohydrates: updatedRecord.totalCarbohydrates,
-              totalFat: updatedRecord.totalFat,
-              totalFiber: updatedRecord.totalFiber,
-              totalSugar: updatedRecord.totalSugar,
-              totalSodium: updatedRecord.totalSodium,
-              notes: updatedRecord.notes,
-              photoUrl: updatedRecord.photoUrl,
-              createdAt: updatedRecord.createdAt || new Date().toISOString(),
-              updatedAt: updatedRecord.updatedAt,
-            };
-            onSuccess?.(nutritionRecord);
-          }
-        } else {
-          // 創建新記錄
-          const localRecord = {
-            _id: Date.now().toString(),
-            userId: 'local-user',
-            date: data.date,
-            mealType: data.mealType,
-            foods: data.foods.map(food => ({
-              foodId: '',
-              foodName: food.foodName,
-              quantity: 1,
-              calories: food.calories || 0,
-              protein: food.protein || 0,
-              carbohydrates: food.carbohydrates || 0,
-              fat: food.fat || 0,
-              fiber: food.fiber || 0,
-              sugar: food.sugar || 0,
-              sodium: food.sodium || 0,
-              description: food.description || '',
-            })),
-            notes: data.notes,
-            totalCalories: data.foods.reduce((sum, food) => sum + (food.calories || 0), 0),
-            totalProtein: data.foods.reduce((sum, food) => sum + (food.protein || 0), 0),
-            totalCarbohydrates: data.foods.reduce((sum, food) => sum + (food.carbohydrates || 0), 0),
-            totalFat: data.foods.reduce((sum, food) => sum + (food.fat || 0), 0),
-            totalFiber: data.foods.reduce((sum, food) => sum + (food.fiber || 0), 0),
-            totalSugar: data.foods.reduce((sum, food) => sum + (food.sugar || 0), 0),
-            totalSodium: data.foods.reduce((sum, food) => sum + (food.sodium || 0), 0),
-            photoUrl: uploadedPhoto,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          };
-          records.push(localRecord);
-          localStorage.setItem('nutrition-records', JSON.stringify(records));
-          // 轉換為符合 NutritionRecord 類型的格式
-          const nutritionRecord: NutritionRecord = {
-            _id: localRecord._id,
-            userId: localRecord.userId,
-            date: localRecord.date,
-            mealType: localRecord.mealType as '早餐' | '午餐' | '晚餐' | '點心',
-            foods: localRecord.foods.map((food: {
-              foodId?: string;
-              foodName: string;
-              description?: string;
-              quantity?: number;
-              calories?: number;
-              protein?: number;
-              carbohydrates?: number;
-              fat?: number;
-              fiber?: number;
-              sugar?: number;
-              sodium?: number;
-            }) => ({
-              foodId: food.foodId || '',
-              foodName: food.foodName,
-              description: food.description || '',
-              quantity: food.quantity || 1,
-              calories: food.calories || 0,
-              protein: food.protein || 0,
-              carbohydrates: food.carbohydrates || 0,
-              fat: food.fat || 0,
-              fiber: food.fiber || 0,
-              sugar: food.sugar || 0,
-              sodium: food.sodium || 0,
-            })),
-            totalCalories: localRecord.totalCalories,
-            totalProtein: localRecord.totalProtein,
-            totalCarbohydrates: localRecord.totalCarbohydrates,
-            totalFat: localRecord.totalFat,
-            totalFiber: localRecord.totalFiber,
-            totalSugar: localRecord.totalSugar,
-            totalSodium: localRecord.totalSodium,
-            notes: localRecord.notes,
-            photoUrl: localRecord.photoUrl,
-            createdAt: localRecord.createdAt,
-            updatedAt: localRecord.updatedAt,
-          };
-          onSuccess?.(nutritionRecord);
-        }
+      let finalRecord;
+      if (currentRecordId) {
+        // 更新現有記錄 (通常是文字部分)
+        const updatePayload: UpdateNutritionRecord = {
+          date: data.date,
+          mealType: data.mealType,
+          notes: data.notes,
+          photoUrl: data.photoUrl,
+          foods: normalizedFoods,
+        };
+        finalRecord = await updateNutritionRecord({ id: currentRecordId, data: updatePayload }).unwrap();
+        setShowSuccessModal(true);
+      } else {
+        // 僅在沒有上傳圖片的情況下，才透過此處建立新紀錄
+        const createPayload: CreateNutritionRecord = {
+          date: data.date,
+          mealType: data.mealType,
+          notes: data.notes,
+          photoUrl: data.photoUrl,
+          foods: normalizedFoods,
+        };
+        finalRecord = await createNutritionRecord(createPayload).unwrap();
       }
+      onSuccess?.(finalRecord);
     } catch (error) {
       console.error('保存失敗:', error);
       alert('保存失敗，請稍後再試');
@@ -643,13 +492,7 @@ export default function SimplifiedNutritionForm({
               ref={fileInputRef}
               accept="image/jpeg,image/png,image/webp,image/gif"
               className="hidden"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) {
-                  handlePhotoPreview(file);
-                  handleAnalyze(file); // 自動觸發分析
-                }
-              }}
+              onChange={(e) => handleFileChange(e.target.files?.[0] || null)}
             />
             <button
               type="button"

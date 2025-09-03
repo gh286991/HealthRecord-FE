@@ -156,11 +156,11 @@ export const nutritionApiRtk = createApi({
     }),
 
     // AI分析照片
-    analyzePhoto: builder.mutation<{ foods: FoodItem[] }, FormData>({
-      query: (formData) => ({
+    analyzePhoto: builder.mutation<{ foods: FoodItem[] }, { photoUrl: string }>({
+      query: ({ photoUrl }) => ({
         url: '/diet-records/analyze-photo',
         method: 'POST',
-        body: formData,
+        body: { photoUrl },
       }),
       // 這個操作不會直接修改伺服器上的記錄，所以不需要 invalidatesTags
     }),
