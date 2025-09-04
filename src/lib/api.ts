@@ -82,6 +82,9 @@ export interface UserProfile {
   bio?: string;
   gender?: 'male' | 'female' | 'other';
   birthday?: string;
+  height?: number;
+  weight?: number;
+  activityLevel?: ActivityLevel;
   createdAt: string;
   updatedAt: string;
 }
@@ -92,6 +95,18 @@ export interface UpdateUserData {
   bio?: string;
   gender?: 'male' | 'female' | 'other';
   birthday?: string;
+  height?: number;
+  weight?: number;
+  activityLevel?: ActivityLevel;
+}
+
+// 活動量枚舉
+export enum ActivityLevel {
+  SEDENTARY = 'sedentary', // 久坐：很少或沒有運動
+  LIGHTLY_ACTIVE = 'lightly_active', // 輕度活躍：每週輕度運動/體育活動 1-3 天
+  MODERATELY_ACTIVE = 'moderately_active', // 中度活躍：每週中度運動/體育活動 3-5 天
+  VERY_ACTIVE = 'very_active', // 非常活躍：每週高強度運動/體育活動 6-7 天
+  EXTRA_ACTIVE = 'extra_active', // 極度活躍：非常高強度運動/體育活動 & 從事體力勞動或每天訓練兩次
 }
 
 // 飲食紀錄相關類型
