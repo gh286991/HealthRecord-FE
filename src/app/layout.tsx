@@ -4,6 +4,7 @@ import "./globals.css";
 import Navigation from "@/components/Navigation";
 import PWAInstallPrompt from "@/components/PWAInstallPrompt";
 import Providers from "@/components/Providers";
+import AuthWrapper from "@/components/AuthWrapper"; // Import AuthWrapper
 import { NextIntlClientProvider } from 'next-intl';
 import PreventBounce from "@/components/PreventBounce";
 
@@ -94,7 +95,7 @@ export default async function RootLayout({
         <NextIntlClientProvider locale="zh" messages={messages}>
           <Providers>
             <Navigation />
-            {children}
+            <AuthWrapper>{children}</AuthWrapper>
             <PWAInstallPrompt />
             <PreventBounce />
           </Providers>

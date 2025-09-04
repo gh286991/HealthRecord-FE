@@ -78,8 +78,9 @@ function NavigationContent() {
             </>
           ) : (
             <>
-              <Link href="/login" onClick={handleNavItemClick} {...item(0, 'text-gray-700 hover:text-gray-900 hover:bg-gray-50')}>登入</Link>
-              <Link href="/register" onClick={handleNavItemClick} {...item(1, 'bg-blue-600 hover:bg-blue-700 text-white')}>註冊</Link>
+              <Link href="/" onClick={handleNavItemClick} {...item(0, 'text-gray-700 hover:text-gray-900 hover:bg-gray-50')}>首頁</Link>
+              <Link href="/login" onClick={handleNavItemClick} {...item(1, 'text-gray-700 hover:text-gray-900 hover:bg-gray-50')}>登入</Link>
+              <Link href="/register" onClick={handleNavItemClick} {...item(2, 'bg-blue-600 hover:bg-blue-700 text-white')}>註冊</Link>
             </>
           )}
         </>
@@ -101,8 +102,9 @@ function NavigationContent() {
           </>
         ) : (
           <>
-            <Link href="/login" onClick={handleNavItemClick} {...item(0, 'text-gray-700 hover:text-gray-900')}>登入</Link>
-            <Link href="/register" onClick={handleNavItemClick} {...item(1, 'bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md')}>註冊</Link>
+            <Link href="/" onClick={handleNavItemClick} {...item(0, 'text-gray-700 hover:text-gray-900')}>首頁</Link>
+            <Link href="/login" onClick={handleNavItemClick} {...item(1, 'text-gray-700 hover:text-gray-900')}>登入</Link>
+            <Link href="/register" onClick={handleNavItemClick} {...item(2, 'bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md')}>註冊</Link>
           </>
         )}
       </>
