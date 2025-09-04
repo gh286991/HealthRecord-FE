@@ -37,9 +37,9 @@ export default function ProfilePage() {
         bio: data.bio || '',
         gender: data.gender,
         birthday: data.birthday || '',
-        height: data.height || '',
-                weight: data.weight || '',
-        activityLevel: data.activityLevel || '',
+        height: data.height || undefined,
+        weight: data.weight || undefined,
+        activityLevel: data.activityLevel || undefined,
       });
     }
   }, [data]);
@@ -317,8 +317,8 @@ export default function ProfilePage() {
                         bio: profile.bio || '',
                         gender: profile.gender,
                         birthday: profile.birthday || '',
-                        height: profile.height || '',
-                        weight: profile.weight || '',
+                        height: profile.height || undefined,
+                        weight: profile.weight || undefined,
                       });
                     }}
                   >
