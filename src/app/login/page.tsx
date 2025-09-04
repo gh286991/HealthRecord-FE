@@ -47,7 +47,7 @@ export default function LoginPage() {
       setToastVariant('success');
       setToastMsg('登入成功');
       setToastOpen(true);
-      setTimeout(() => router.push('/profile'), 400);
+      setTimeout(() => router.push('/dashboard'), 400);
     } catch (err: unknown) {
       const errorMessage = err instanceof Error && 'response' in err && 
         typeof err.response === 'object' && err.response !== null &&

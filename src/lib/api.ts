@@ -138,6 +138,17 @@ export interface NutritionRecord {
 
 
 
+
+// Dashboard API
+export const getDashboardData = async (token: string) => {
+  const response = await api.get('/dashboard', {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+  return response.data;
+};
+
 // 工具函數
 export const tokenUtils = {
   setToken: (token: string) => {
