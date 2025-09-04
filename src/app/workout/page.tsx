@@ -148,9 +148,11 @@ function WorkoutPageContent() {
       setFormInitialData(undefined);
     }
     setEditingRecord(null);
-    setSelectedWorkoutType(WorkoutType.Resistance);
-    setViewMode('add');
-    try { router.push('/workout?form=add&type=resistance'); } catch { }
+    setSelectedWorkoutType(null); // Reset selected type
+    setWorkoutTypeSelectorOpen(true); // Open the workout type selector
+    setViewMode('add'); // Keep view mode as add, but the selector will overlay
+    // The router.push will be handled by handleWorkoutTypeSelect after selection
+    try { router.push('/workout?form=add'); } catch { }
   };
 
   const handleStartPlan = (plan: WorkoutPlan) => {
