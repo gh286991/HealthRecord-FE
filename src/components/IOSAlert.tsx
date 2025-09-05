@@ -24,7 +24,6 @@ const IOSAlert: React.FC<IOSAlertProps> = ({
   if (!isOpen) return null;
 
   return (
-    // Use a transparent, blurred backdrop instead of a dark overlay
     <div className="fixed inset-0 z-50 flex justify-center items-center bg-transparent backdrop-blur-md backdrop-saturate-150">
       <div className="bg-white rounded-2xl w-72 shadow-xl">
         <div className="px-4 pt-5 pb-4 text-center">

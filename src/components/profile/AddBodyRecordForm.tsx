@@ -36,7 +36,7 @@ export default function AddBodyRecordForm() {
       setToastOpen(true);
       setWeight('');
       setBodyFat('');
-    } catch (err) {
+    } catch {
       setToastVariant('error');
       setToastMsg('新增失敗，請稍後再試');
       setToastOpen(true);

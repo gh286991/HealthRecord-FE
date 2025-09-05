@@ -4,7 +4,7 @@ export interface BodyRecord {
   date: string;
   weight: number;
   bodyFat?: number;
-  inbody?: Record<string, any>;
+  inbody?: Record<string, unknown>;
   createdAt: string;
   updatedAt: string;
 }
