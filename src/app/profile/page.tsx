@@ -6,6 +6,9 @@ import { tokenUtils, UserProfile, UpdateUserData, ActivityLevel, Goal } from '@/
 import { useGetProfileQuery, useUpdateProfileMutation } from '@/lib/authApi';
 import Button from '@/components/Button';
 import Toast from '@/components/Toast';
+import ProfileTabs from '@/components/profile/ProfileTabs';
+import AddBodyRecordForm from '@/components/profile/AddBodyRecordForm';
+import BodyRecordHistory from '@/components/profile/BodyRecordHistory';
 
 export default function ProfilePage() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -19,6 +22,7 @@ export default function ProfilePage() {
   const [toastOpen, setToastOpen] = useState(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [toastVariant, setToastVariant] = useState<'default'|'success'|'error'>('default');
+  const [activeTab, setActiveTab] = useState(0);
 
   useEffect(() => {
     if (!tokenUtils.isLoggedIn()) {
@@ -196,289 +200,291 @@ export default function ProfilePage() {
     );
   }
 
-  return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-3xl mx-auto">
-        <div className="bg-white shadow rounded-lg">
-          <div className="px-4 py-5 sm:p-6">
-            <div className="flex justify-between items-center mb-6">
-              {/* 標題改由 Nav 呈現 */}
-              <div />
-              {!editing && (
-                <Button onClick={() => setEditing(true)}>編輯資料</Button>
-              )}
-            </div>
-
-            {/* 提示改為 Toast */}
-
-            {editing ? (
-              <form onSubmit={handleSubmit} className="space-y-6">
-                {/* 基本資訊 */}
-                <div className="space-y-6">
-                  <h2 className="text-xl font-semibold text-gray-900">基本資訊</h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        用戶名
-                      </label>
-                      <input
-                        type="text"
-                        value={profile.username}
-                        disabled
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-900"
-                      />
-                      <p className="text-xs text-gray-500 mt-1">用戶名無法修改</p>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        信箱
-                      </label>
-                      <input
-                        type="email"
-                        value={profile.email}
-                        disabled
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-900"
-                      />
-                      <p className="text-xs text-gray-500 mt-1">信箱無法修改</p>
-                    </div>
-
-                    <div>
-                      <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
-                        姓名
-                      </label>
-                      <input
-                        id="name"
-                        name="name"
-                        type="text"
-                        value={formData.name || ''}
-                        onChange={handleChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                      />
-                    </div>
-
-                    <div>
-                      <label htmlFor="gender" className="block text-sm font-medium text-gray-700 mb-2">
-                        性別
-                      </label>
-                      <select
-                        id="gender"
-                        name="gender"
-                        value={formData.gender || ''}
-                        onChange={handleChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                      >
-                        <option value="">請選擇</option>
-                        <option value="male">男性</option>
-                        <option value="female">女性</option>
-                        <option value="other">其他</option>
-                      </select>
-                    </div>
-
-                    <div className="md:col-span-2">
-                      <label htmlFor="birthday" className="block text-sm font-medium text-gray-700 mb-2">
-                        生日
-                      </label>
-                      <input
-                        id="birthday"
-                        name="birthday"
-                        type="date"
-                        value={formData.birthday || ''}
-                        onChange={handleChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                      />
-                    </div>
-
-                    <div className="md:col-span-2">
-                      <label htmlFor="bio" className="block text-sm font-medium text-gray-700 mb-2">
-                        個人簡介
-                      </label>
-                      <textarea
-                        id="bio"
-                        name="bio"
-                        rows={4}
-                        value={formData.bio || ''}
-                        onChange={handleChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                      />
-                    </div>
+  const tabs = [
+    {
+      name: '個人檔案',
+      content: (
+        <>
+          {editing ? (
+            <form onSubmit={handleSubmit} className="space-y-6">
+              {/* 基本資訊 */}
+              <div className="space-y-6">
+                <h2 className="text-xl font-semibold text-gray-900">基本資訊</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      用戶名
+                    </label>
+                    <input
+                      type="text"
+                      value={profile.username}
+                      disabled
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-900"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">用戶名無法修改</p>
                   </div>
-                </div>
 
-                {/* 身體測量 */}
-                <div className="space-y-6 mt-8">
-                  <h2 className="text-xl font-semibold text-gray-900">身體測量與目標</h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label htmlFor="height" className="block text-sm font-medium text-gray-700 mb-2">
-                        身高 (公分)
-                      </label>
-                      <input
-                        id="height"
-                        name="height"
-                        type="number"
-                        value={formData.height || ''}
-                        onChange={handleChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                      />
-                    </div>
-
-                    <div>
-                      <label htmlFor="weight" className="block text-sm font-medium text-gray-700 mb-2">
-                        體重 (公斤)
-                      </label>
-                      <input
-                        id="weight"
-                        name="weight"
-                        type="number"
-                        value={formData.weight || ''}
-                        onChange={handleChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                      />
-                    </div>
-
-                    <div>
-                      <label htmlFor="activityLevel" className="block text-sm font-medium text-gray-700 mb-2">
-                        活動量
-                      </label>
-                      <select
-                        id="activityLevel"
-                        name="activityLevel"
-                        value={formData.activityLevel || ''}
-                        onChange={handleChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                      >
-                        <option value="">請選擇</option>
-                        <option value={ActivityLevel.SEDENTARY}>久坐 (很少或沒有運動)</option>
-                        <option value={ActivityLevel.LIGHTLY_ACTIVE}>輕度活躍 (每週輕度運動 1-3 天)</option>
-                        <option value={ActivityLevel.MODERATELY_ACTIVE}>中度活躍 (每週中度運動 3-5 天)</option>
-                        <option value={ActivityLevel.VERY_ACTIVE}>非常活躍 (每週高強度運動 6-7 天)</option>
-                        <option value={ActivityLevel.EXTRA_ACTIVE}>極度活躍 (高強度運動 & 體力勞動或每天訓練兩次)</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label htmlFor="goal" className="block text-sm font-medium text-gray-700 mb-2">
-                        目標
-                      </label>
-                      <select
-                        id="goal"
-                        name="goal"
-                        value={formData.goal || ''}
-                        onChange={handleChange}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                      >
-                        <option value="">請選擇</option>
-                        <option value={Goal.WEIGHT_LOSS}>減重</option>
-                        <option value={Goal.MAINTAIN}>維持</option>
-                        <option value={Goal.MUSCLE_GAIN}>增肌</option>
-                      </select>
-                    </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      信箱
+                    </label>
+                    <input
+                      type="email"
+                      value={profile.email}
+                      disabled
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-900"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">信箱無法修改</p>
                   </div>
-                </div>
 
-                <div className="flex justify-end space-x-4 pt-6">
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={() => {
-                      setEditing(false);
-                      // 重置表單數據到 profile 的原始數據
-                      setFormData({
-                        name: profile.name || '',
-                        bio: profile.bio || '',
-                        gender: profile.gender,
-                        birthday: profile.birthday || '',
-                        height: profile.height || undefined,
-                        weight: profile.weight || undefined,
-                        activityLevel: profile.activityLevel || undefined,
-                        goal: profile.goal || undefined,
-                      });
-                    }}
-                  >
-                    取消
-                  </Button>
-                  <Button type="submit" disabled={updateLoading}>
-                    {updateLoading ? '更新中...' : '儲存'}
-                  </Button>
-                </div>
-              </form>
-            ) : (
-              <div className="space-y-4">
-                {/* 基本資訊 */}
-                <div className="space-y-6">
-                  <h2 className="text-xl font-semibold text-gray-900">基本資訊</h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="flex justify-between items-center">
-                      <span className="font-medium text-gray-700">用戶名</span>
-                      <span className="text-gray-900">{profile.username}</span>
-                    </div>
-
-                    <div className="flex justify-between items-center">
-                      <span className="font-medium text-gray-700">信箱</span>
-                      <span className="text-gray-900">{profile.email}</span>
-                    </div>
-
-                    <div className="flex justify-between items-center">
-                      <span className="font-medium text-gray-700">姓名</span>
-                      <span className="text-gray-900">{profile.name || '未設定'}</span>
-                    </div>
-
-                    <div className="flex justify-between items-center">
-                      <span className="font-medium text-gray-700">性別</span>
-                      <span className="text-gray-900">{getGenderText(profile.gender)}</span>
-                    </div>
-
-                    <div className="flex justify-between items-center">
-                      <span className="font-medium text-gray-700">生日</span>
-                      <span className="text-gray-900">{formatDate(profile.birthday)}</span>
-                    </div>
-
-                    <div className="flex justify-between items-center">
-                      <span className="font-medium text-gray-700">註冊時間</span>
-                      <span className="text-gray-900">{formatDate(profile.createdAt)}</span>
-                    </div>
-
-                    <div className="md:col-span-2">
-                      <span className="font-medium text-gray-700">個人簡介</span>
-                      <p className="text-gray-900 whitespace-pre-wrap mt-2">
-                        {profile.bio || '未設定'}
-                      </p>
-                    </div>
+                  <div>
+                    <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
+                      姓名
+                    </label>
+                    <input
+                      id="name"
+                      name="name"
+                      type="text"
+                      value={formData.name || ''}
+                      onChange={handleChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                    />
                   </div>
-                </div>
 
-                {/* 身體測量 */}
-                <div className="space-y-6 mt-8">
-                  <h2 className="text-xl font-semibold text-gray-900">身體測量與目標</h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="flex justify-between items-center">
-                      <span className="font-medium text-gray-700">身高</span>
-                      <span className="text-gray-900">{profile.height ? `${profile.height} 公分` : '未設定'}</span>
-                    </div>
+                  <div>
+                    <label htmlFor="gender" className="block text-sm font-medium text-gray-700 mb-2">
+                      性別
+                    </label>
+                    <select
+                      id="gender"
+                      name="gender"
+                      value={formData.gender || ''}
+                      onChange={handleChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                    >
+                      <option value="">請選擇</option>
+                      <option value="male">男性</option>
+                      <option value="female">女性</option>
+                      <option value="other">其他</option>
+                    </select>
+                  </div>
 
-                    <div className="flex justify-between items-center">
-                      <span className="font-medium text-gray-700">體重</span>
-                      <span className="text-gray-900">{profile.weight ? `${profile.weight} 公斤` : '未設定'}</span>
-                    </div>
+                  <div className="md:col-span-2">
+                    <label htmlFor="birthday" className="block text-sm font-medium text-gray-700 mb-2">
+                      生日
+                    </label>
+                    <input
+                      id="birthday"
+                      name="birthday"
+                      type="date"
+                      value={formData.birthday || ''}
+                      onChange={handleChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                    />
+                  </div>
 
-                    <div className="flex justify-between items-center">
-                      <span className="font-medium text-gray-700">活動量</span>
-                      <span className="text-gray-900">{getActivityLevelText(profile.activityLevel)}</span>
-                    </div>
-
-                    <div className="flex justify-between items-center">
-                      <span className="font-medium text-gray-700">目標</span>
-                      <span className="text-gray-900">{getGoalText(profile.goal)}</span>
-                    </div>
+                  <div className="md:col-span-2">
+                    <label htmlFor="bio" className="block text-sm font-medium text-gray-700 mb-2">
+                      個人簡介
+                    </label>
+                    <textarea
+                      id="bio"
+                      name="bio"
+                      rows={4}
+                      value={formData.bio || ''}
+                      onChange={handleChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                    />
                   </div>
                 </div>
               </div>
-            )}
+
+              {/* 身體測量 */}
+              <div className="space-y-6 mt-8">
+                <h2 className="text-xl font-semibold text-gray-900">身體測量與目標</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label htmlFor="height" className="block text-sm font-medium text-gray-700 mb-2">
+                      身高 (公分)
+                    </label>
+                    <input
+                      id="height"
+                      name="height"
+                      type="number"
+                      value={formData.height || ''}
+                      onChange={handleChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                    />
+                  </div>
+
+                  <div>
+                    <label htmlFor="activityLevel" className="block text-sm font-medium text-gray-700 mb-2">
+                      活動量
+                    </label>
+                    <select
+                      id="activityLevel"
+                      name="activityLevel"
+                      value={formData.activityLevel || ''}
+                      onChange={handleChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                    >
+                      <option value="">請選擇</option>
+                      <option value={ActivityLevel.SEDENTARY}>久坐 (很少或沒有運動)</option>
+                      <option value={ActivityLevel.LIGHTLY_ACTIVE}>輕度活躍 (每週輕度運動 1-3 天)</option>
+                      <option value={ActivityLevel.MODERATELY_ACTIVE}>中度活躍 (每週中度運動 3-5 天)</option>
+                      <option value={ActivityLevel.VERY_ACTIVE}>非常活躍 (每週高強度運動 6-7 天)</option>
+                      <option value={ActivityLevel.EXTRA_ACTIVE}>極度活躍 (高強度運動 & 體力勞動或每天訓練兩次)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label htmlFor="goal" className="block text-sm font-medium text-gray-700 mb-2">
+                      目標
+                    </label>
+                    <select
+                      id="goal"
+                      name="goal"
+                      value={formData.goal || ''}
+                      onChange={handleChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                    >
+                      <option value="">請選擇</option>
+                      <option value={Goal.WEIGHT_LOSS}>減重</option>
+                      <option value={Goal.MAINTAIN}>維持</option>
+                      <option value={Goal.MUSCLE_GAIN}>增肌</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end space-x-4 pt-6">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => {
+                    setEditing(false);
+                    // 重置表單數據到 profile 的原始數據
+                    setFormData({
+                      name: profile.name || '',
+                      bio: profile.bio || '',
+                      gender: profile.gender,
+                      birthday: profile.birthday || '',
+                      height: profile.height || undefined,
+                      weight: profile.weight || undefined,
+                      activityLevel: profile.activityLevel || undefined,
+                      goal: profile.goal || undefined,
+                    });
+                  }}
+                >
+                  取消
+                </Button>
+                <Button type="submit" disabled={updateLoading}>
+                  {updateLoading ? '更新中...' : '儲存'}
+                </Button>
+              </div>
+            </form>
+          ) : (
+            <div className="space-y-4">
+              {/* 基本資訊 */}
+              <div className="space-y-6">
+                <h2 className="text-xl font-semibold text-gray-900">基本資訊</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="flex justify-between items-center">
+                    <span className="font-medium text-gray-700">用戶名</span>
+                    <span className="text-gray-900">{profile.username}</span>
+                  </div>
+
+                  <div className="flex justify-between items-center">
+                    <span className="font-medium text-gray-700">信箱</span>
+                    <span className="text-gray-900">{profile.email}</span>
+                  </div>
+
+                  <div className="flex justify-between items-center">
+                    <span className="font-medium text-gray-700">姓名</span>
+                    <span className="text-gray-900">{profile.name || '未設定'}</span>
+                  </div>
+
+                  <div className="flex justify-between items-center">
+                    <span className="font-medium text-gray-700">性別</span>
+                    <span className="text-gray-900">{getGenderText(profile.gender)}</span>
+                  </div>
+
+                  <div className="flex justify-between items-center">
+                    <span className="font-medium text-gray-700">生日</span>
+                    <span className="text-gray-900">{formatDate(profile.birthday)}</span>
+                  </div>
+
+                  <div className="flex justify-between items-center">
+                    <span className="font-medium text-gray-700">註冊時間</span>
+                    <span className="text-gray-900">{formatDate(profile.createdAt)}</span>
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <span className="font-medium text-gray-700">個人簡介</span>
+                    <p className="text-gray-900 whitespace-pre-wrap mt-2">
+                      {profile.bio || '未設定'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* 身體測量 */}
+              <div className="space-y-6 mt-8">
+                <h2 className="text-xl font-semibold text-gray-900">身體測量與目標</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="flex justify-between items-center">
+                    <span className="font-medium text-gray-700">身高</span>
+                    <span className="text-gray-900">{profile.height ? `${profile.height} 公分` : '未設定'}</span>
+                  </div>
+
+                  <div className="flex justify-between items-center">
+                    <span className="font-medium text-gray-700">體重</span>
+                    <span className="text-gray-900">{profile.weight ? `${profile.weight} 公斤` : '未設定'}</span>
+                  </div>
+
+                  <div className="flex justify-between items-center">
+                    <span className="font-medium text-gray-700">活動量</span>
+                    <span className="text-gray-900">{getActivityLevelText(profile.activityLevel)}</span>
+                  </div>
+
+                  <div className="flex justify-between items-center">
+                    <span className="font-medium text-gray-700">目標</span>
+                    <span className="text-gray-900">{getGoalText(profile.goal)}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </>
+      ),
+    },
+    {
+      name: '身體記錄',
+      content: (
+        <div className="space-y-6">
+          <AddBodyRecordForm />
+          <BodyRecordHistory />
+        </div>
+      ),
+    },
+  ];
+
+  return (
+    <div className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-3xl mx-auto">
+        <div className="flex justify-between items-center mb-4">
+          <ProfileTabs tabs={tabs} activeTab={activeTab} setActiveTab={setActiveTab} />
+          {activeTab === 0 && !editing && (
+            <Button onClick={() => setEditing(true)}>編輯資料</Button>
+          )}
+        </div>
+        <div className="bg-white shadow rounded-lg">
+          <div className="px-4 py-5 sm:p-6">
+            {tabs[activeTab].content}
           </div>
         </div>
       </div>
       <Toast open={toastOpen} message={toastMsg} variant={toastVariant} onClose={() => setToastOpen(false)} />
     </div>
   );
-} 
+}
