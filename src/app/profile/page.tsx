@@ -12,7 +12,7 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [updateLoading, setUpdateLoading] = useState(false);
-  const [formData, setFormData] = useState<UpdateUserData>({});
+  const [formData, setFormData] = useState<Partial<UpdateUserData>>({});
   const router = useRouter();
   const { data, isFetching, refetch } = useGetProfileQuery();
   const [updateProfile] = useUpdateProfileMutation();
@@ -47,10 +47,35 @@ export default function ProfilePage() {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value,
-    }));
+    
+    // 處理數字類型的欄位
+    if (name === 'height' || name === 'weight') {
+      const numValue = value === '' ? undefined : Number(value);
+      setFormData(prev => ({
+        ...prev,
+        [name]: numValue,
+      }));
+    } else if (name === 'gender') {
+      setFormData(prev => ({
+        ...prev,
+        gender: value as 'male' | 'female' | 'other' | undefined,
+      }));
+    } else if (name === 'activityLevel') {
+      setFormData(prev => ({
+        ...prev,
+        activityLevel: value as ActivityLevel | undefined,
+      }));
+    } else if (name === 'goal') {
+      setFormData(prev => ({
+        ...prev,
+        goal: value as Goal | undefined,
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value,
+      }));
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -58,19 +83,34 @@ export default function ProfilePage() {
     setUpdateLoading(true);
 
     try {
-      // 準備要送出的資料，移除值為 undefined 的欄位
-      const submitData: UpdateUserData = {};
-      Object.keys(formData).forEach(key => {
-        const K = key as keyof UpdateUserData;
-        if (formData[K] !== undefined) {
-          submitData[K] = formData[K];
-        }
-      });
-
-      // 如果有空字串，轉為 undefined (除了 name 和 bio)
-      if (submitData.gender === '') submitData.gender = undefined;
-      if (submitData.activityLevel === '') submitData.activityLevel = undefined;
-      if (submitData.goal === '') submitData.goal = undefined;
+      // 準備要送出的資料，移除值為 undefined 和空字串的欄位
+      const submitData: Partial<UpdateUserData> = {};
+      
+      // 手動處理每個欄位，確保類型安全
+      if (formData.name !== undefined && formData.name !== '') {
+        submitData.name = formData.name;
+      }
+      if (formData.bio !== undefined && formData.bio !== '') {
+        submitData.bio = formData.bio;
+      }
+      if (formData.gender !== undefined) {
+        submitData.gender = formData.gender;
+      }
+      if (formData.birthday !== undefined && formData.birthday !== '') {
+        submitData.birthday = formData.birthday;
+      }
+      if (formData.height !== undefined) {
+        submitData.height = formData.height;
+      }
+      if (formData.weight !== undefined) {
+        submitData.weight = formData.weight;
+      }
+      if (formData.activityLevel !== undefined) {
+        submitData.activityLevel = formData.activityLevel;
+      }
+      if (formData.goal !== undefined) {
+        submitData.goal = formData.goal;
+      }
 
       const updatedProfile = await updateProfile(submitData).unwrap();
       setProfile(updatedProfile);
