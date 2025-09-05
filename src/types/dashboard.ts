@@ -1,4 +1,5 @@
 
+import { Goal } from '@/lib/api';
 // Based on the backend DTOs
 
 export interface DietRecord {
@@ -41,4 +42,6 @@ export interface DashboardData {
   dietSummary: DietSummary;
   workoutRecords: WorkoutRecord[];
   workoutPlans: WorkoutPlan[];
+  calorieGoal: number;
+  goal: Goal;
 }

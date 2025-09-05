@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { tokenUtils, UserProfile, UpdateUserData, ActivityLevel } from '@/lib/api';
+import { tokenUtils, UserProfile, UpdateUserData, ActivityLevel, Goal } from '@/lib/api';
 import { useGetProfileQuery, useUpdateProfileMutation } from '@/lib/authApi';
 import Button from '@/components/Button';
 import Toast from '@/components/Toast';
@@ -40,6 +40,7 @@ export default function ProfilePage() {
         height: data.height || undefined,
         weight: data.weight || undefined,
         activityLevel: data.activityLevel || undefined,
+        goal: data.goal || undefined,
       });
     }
   }, [data]);
@@ -48,7 +49,7 @@ export default function ProfilePage() {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: value || undefined,
+      [name]: value,
     }));
   };
 
@@ -57,15 +58,19 @@ export default function ProfilePage() {
     setUpdateLoading(true);
 
     try {
-      // 過濾掉空字串的欄位
+      // 準備要送出的資料，移除值為 undefined 的欄位
       const submitData: UpdateUserData = {};
-      if (formData.name?.trim()) submitData.name = formData.name;
-      if (formData.bio?.trim()) submitData.bio = formData.bio;
-      if (formData.gender) submitData.gender = formData.gender;
-      if (formData.birthday) submitData.birthday = formData.birthday;
-      if (formData.height) submitData.height = Number(formData.height);
-      if (formData.weight) submitData.weight = Number(formData.weight);
-      if (formData.activityLevel) submitData.activityLevel = formData.activityLevel;
+      Object.keys(formData).forEach(key => {
+        const K = key as keyof UpdateUserData;
+        if (formData[K] !== undefined) {
+          submitData[K] = formData[K];
+        }
+      });
+
+      // 如果有空字串，轉為 undefined (除了 name 和 bio)
+      if (submitData.gender === '') submitData.gender = undefined;
+      if (submitData.activityLevel === '') submitData.activityLevel = undefined;
+      if (submitData.goal === '') submitData.goal = undefined;
 
       const updatedProfile = await updateProfile(submitData).unwrap();
       setProfile(updatedProfile);
@@ -111,6 +116,15 @@ export default function ProfilePage() {
       case ActivityLevel.MODERATELY_ACTIVE: return '中度活躍 (每週中度運動 3-5 天)';
       case ActivityLevel.VERY_ACTIVE: return '非常活躍 (每週高強度運動 6-7 天)';
       case ActivityLevel.EXTRA_ACTIVE: return '極度活躍 (高強度運動 & 體力勞動或每天訓練兩次)';
+      default: return '未設定';
+    }
+  };
+
+  const getGoalText = (goal?: Goal) => {
+    switch (goal) {
+      case Goal.WEIGHT_LOSS: return '減重';
+      case Goal.MAINTAIN: return '維持';
+      case Goal.MUSCLE_GAIN: return '增肌';
       default: return '未設定';
     }
   };
@@ -253,7 +267,7 @@ export default function ProfilePage() {
 
                 {/* 身體測量 */}
                 <div className="space-y-6 mt-8">
-                  <h2 className="text-xl font-semibold text-gray-900">身體測量</h2>
+                  <h2 className="text-xl font-semibold text-gray-900">身體測量與目標</h2>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                       <label htmlFor="height" className="block text-sm font-medium text-gray-700 mb-2">
@@ -283,7 +297,7 @@ export default function ProfilePage() {
                       />
                     </div>
 
-                    <div className="md:col-span-2">
+                    <div>
                       <label htmlFor="activityLevel" className="block text-sm font-medium text-gray-700 mb-2">
                         活動量
                       </label>
@@ -300,6 +314,24 @@ export default function ProfilePage() {
                         <option value={ActivityLevel.MODERATELY_ACTIVE}>中度活躍 (每週中度運動 3-5 天)</option>
                         <option value={ActivityLevel.VERY_ACTIVE}>非常活躍 (每週高強度運動 6-7 天)</option>
                         <option value={ActivityLevel.EXTRA_ACTIVE}>極度活躍 (高強度運動 & 體力勞動或每天訓練兩次)</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label htmlFor="goal" className="block text-sm font-medium text-gray-700 mb-2">
+                        目標
+                      </label>
+                      <select
+                        id="goal"
+                        name="goal"
+                        value={formData.goal || ''}
+                        onChange={handleChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                      >
+                        <option value="">請選擇</option>
+                        <option value={Goal.WEIGHT_LOSS}>減重</option>
+                        <option value={Goal.MAINTAIN}>維持</option>
+                        <option value={Goal.MUSCLE_GAIN}>增肌</option>
                       </select>
                     </div>
                   </div>
@@ -319,6 +351,8 @@ export default function ProfilePage() {
                         birthday: profile.birthday || '',
                         height: profile.height || undefined,
                         weight: profile.weight || undefined,
+                        activityLevel: profile.activityLevel || undefined,
+                        goal: profile.goal || undefined,
                       });
                     }}
                   >
@@ -376,7 +410,7 @@ export default function ProfilePage() {
 
                 {/* 身體測量 */}
                 <div className="space-y-6 mt-8">
-                  <h2 className="text-xl font-semibold text-gray-900">身體測量</h2>
+                  <h2 className="text-xl font-semibold text-gray-900">身體測量與目標</h2>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="flex justify-between items-center">
                       <span className="font-medium text-gray-700">身高</span>
@@ -388,9 +422,14 @@ export default function ProfilePage() {
                       <span className="text-gray-900">{profile.weight ? `${profile.weight} 公斤` : '未設定'}</span>
                     </div>
 
-                    <div className="flex justify-between items-center md:col-span-2">
+                    <div className="flex justify-between items-center">
                       <span className="font-medium text-gray-700">活動量</span>
                       <span className="text-gray-900">{getActivityLevelText(profile.activityLevel)}</span>
+                    </div>
+
+                    <div className="flex justify-between items-center">
+                      <span className="font-medium text-gray-700">目標</span>
+                      <span className="text-gray-900">{getGoalText(profile.goal)}</span>
                     </div>
                   </div>
                 </div>

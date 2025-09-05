@@ -85,6 +85,7 @@ export interface UserProfile {
   height?: number;
   weight?: number;
   activityLevel?: ActivityLevel;
+  goal?: Goal;
   createdAt: string;
   updatedAt: string;
 }
@@ -98,6 +99,7 @@ export interface UpdateUserData {
   height?: number;
   weight?: number;
   activityLevel?: ActivityLevel;
+  goal?: Goal;
 }
 
 // 活動量枚舉
@@ -107,6 +109,12 @@ export enum ActivityLevel {
   MODERATELY_ACTIVE = 'moderately_active', // 中度活躍：每週中度運動/體育活動 3-5 天
   VERY_ACTIVE = 'very_active', // 非常活躍：每週高強度運動/體育活動 6-7 天
   EXTRA_ACTIVE = 'extra_active', // 極度活躍：非常高強度運動/體育活動 & 從事體力勞動或每天訓練兩次
+}
+
+export enum Goal {
+  WEIGHT_LOSS = 'weight_loss', // 減重
+  MAINTAIN = 'maintain', // 維持
+  MUSCLE_GAIN = 'muscle_gain', // 增肌
 }
 
 // 飲食紀錄相關類型

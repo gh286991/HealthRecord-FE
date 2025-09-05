@@ -48,7 +48,6 @@ const DashboardClient = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-blue-50 to-purple-50 p-4 sm:p-6 lg:p-8">
       <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold text-gray-800 dark:text-white mb-6">我的儀表板</h1>
         <div className="space-y-6">
           <CalorieSummary 
             tdee={data.tdee} 
@@ -56,6 +55,8 @@ const DashboardClient = () => {
             bmr={data.bmr}
             activityLevel={data.activityLevel}
             activityMultiplier={data.activityMultiplier}
+            calorieGoal={data.calorieGoal}
+            goal={data.goal}
           />
           <WorkoutPlanSummary plans={data.workoutPlans} />
           <WorkoutSummary records={data.workoutRecords} />

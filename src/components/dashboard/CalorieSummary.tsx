@@ -2,6 +2,7 @@
 import Card from '@/components/Card';
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { Goal } from '@/lib/api';
 
 interface CalorieSummaryProps {
   tdee: number;
@@ -9,6 +10,8 @@ interface CalorieSummaryProps {
   bmr: number;
   activityLevel: string;
   activityMultiplier: number;
+  calorieGoal: number;
+  goal: Goal;
 }
 
 const activityLevelMap: Record<string, string> = {
@@ -19,7 +22,19 @@ const activityLevelMap: Record<string, string> = {
   extra_active: '極度活躍',
 };
 
-const CalorieSummary: React.FC<CalorieSummaryProps> = ({ tdee, consumed, bmr, activityLevel, activityMultiplier }) => {
+const goalMap: Record<Goal, string> = {
+  [Goal.WEIGHT_LOSS]: '減重',
+  [Goal.MAINTAIN]: '維持',
+  [Goal.MUSCLE_GAIN]: '增肌',
+};
+
+const goalOffsetMap: Record<Goal, number> = {
+  [Goal.WEIGHT_LOSS]: -300,
+  [Goal.MAINTAIN]: 0,
+  [Goal.MUSCLE_GAIN]: 300,
+};
+
+const CalorieSummary: React.FC<CalorieSummaryProps> = ({ tdee, consumed, bmr, activityLevel, activityMultiplier, calorieGoal, goal }) => {
   const [detailsVisible, setDetailsVisible] = useState(false);
 
   if (tdee <= 0) {
@@ -38,8 +53,9 @@ const CalorieSummary: React.FC<CalorieSummaryProps> = ({ tdee, consumed, bmr, ac
     );
   }
 
-  const percentage = (consumed / tdee) * 100;
-  const remaining = tdee - consumed;
+  const displayGoal = calorieGoal || tdee;
+  const percentage = (consumed / displayGoal) * 100;
+  const remaining = displayGoal - consumed;
 
   return (
     <Card className="overflow-hidden">
@@ -71,13 +87,13 @@ const CalorieSummary: React.FC<CalorieSummaryProps> = ({ tdee, consumed, bmr, ac
           </div>
           <div>
             <p className="text-sm text-gray-500">目標</p>
-            <p className="text-2xl font-bold text-gray-500">{Math.round(tdee)}</p>
+            <p className="text-2xl font-bold text-gray-500">{Math.round(displayGoal)}</p>
             <p className="text-xs text-gray-400">大卡</p>
           </div>
         </div>
         {detailsVisible && (
           <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800 space-y-2">
-            <h3 className="font-bold text-base mb-2">每日熱量目標 (TDEE) 如何計算？</h3>
+            <h3 className="font-bold text-base mb-2">每日熱量目標如何計算？</h3>
             <div className="flex justify-between">
               <span>基礎代謝率 (BMR)</span>
               <span className="font-mono">{Math.round(bmr)} kcal</span>
@@ -91,6 +107,19 @@ const CalorieSummary: React.FC<CalorieSummaryProps> = ({ tdee, consumed, bmr, ac
               <span>總熱量消耗 (TDEE)</span>
               <span className="font-mono">{Math.round(tdee)} kcal</span>
             </div>
+            {goal && goalOffsetMap[goal] !== 0 && (
+              <>
+                <div className="flex justify-between">
+                  <span>目標 ({goalMap[goal] || goal})</span>
+                  <span className="font-mono">{goalOffsetMap[goal] > 0 ? '+' : ''}{goalOffsetMap[goal]} kcal</span>
+                </div>
+                <hr className="border-blue-200" />
+                <div className="flex justify-between font-bold">
+                  <span>建議熱量攝取</span>
+                  <span className="font-mono">{Math.round(calorieGoal)} kcal</span>
+                </div>
+              </>
+            )}
           </div>
         )}
       </div>
