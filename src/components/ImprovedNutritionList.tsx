@@ -130,12 +130,22 @@ export default function ImprovedNutritionList({ selectedDate, onDateChange, onAd
   };
 
   // 格式化數字，避免過長的小數位
-  const formatNumber = (num: number, decimals: number = 1) => {
+  const formatNumber = (num: number) => {
     if (num === 0) return '0';
-    if (num < 0.1) return num.toFixed(decimals);
-    if (num < 1) return num.toFixed(1);
-    if (num < 10) return num.toFixed(1);
-    return Math.round(num).toString();
+    
+    // 處理浮點數精度問題
+    const rounded = Math.round(num * 100) / 100;
+    
+    // 如果是整數，直接返回
+    if (rounded % 1 === 0) return rounded.toString();
+    
+    // 如果小數位過多（超過2位），四捨五入到1位
+    const str = rounded.toString();
+    if (str.includes('.') && str.split('.')[1].length > 2) {
+      return rounded.toFixed(1);
+    }
+    
+    return rounded.toString();
   };
 
   const summaryLabel = isToday(selectedDate) ? '今日' : '總計';
@@ -200,7 +210,7 @@ export default function ImprovedNutritionList({ selectedDate, onDateChange, onAd
               <div className="grid grid-cols-7 divide-x divide-gray-100">
                 <div className="text-center px-2">
                   <div className="text-[10px] text-gray-500">攝取 / {summaryLabel}</div>
-                  <div className="text-lg font-semibold text-green-600">{formatNumber(getDailyTotals().totalCalories, 0)}</div>
+                  <div className="text-lg font-semibold text-green-600">{formatNumber(getDailyTotals().totalCalories)}</div>
                   <div className="text-[10px] text-gray-400">卡路里</div>
                 </div>
                 {(() => {
@@ -269,7 +279,7 @@ export default function ImprovedNutritionList({ selectedDate, onDateChange, onAd
                 
                 <div className="flex items-center gap-3">
                   <div className="text-right">
-                    <div className="text-xl font-bold text-green-600">{formatNumber(record.totalCalories || 0, 0)}</div>
+                    <div className="text-xl font-bold text-green-600">{formatNumber(record.totalCalories || 0)}</div>
                     <div className="text-xs text-gray-500">卡路里</div>
                   </div>
                   
@@ -322,7 +332,7 @@ export default function ImprovedNutritionList({ selectedDate, onDateChange, onAd
                         )}
                       </div>
                       <div className="text-sm text-green-600 font-medium ml-2">
-                        {formatNumber(food.calories || 0, 0)} 卡
+                        {formatNumber(food.calories || 0)} 卡
                       </div>
                     </div>
                   ))}
