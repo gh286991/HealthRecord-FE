@@ -125,6 +125,7 @@ export interface NutritionRecord {
   mealType: '早餐' | '午餐' | '晚餐' | '點心';
   foods: FoodItem[];
   notes?: string;
+  price?: number;
   totalCalories: number;
   totalProtein: number;
   totalCarbohydrates: number;
@@ -132,7 +133,9 @@ export interface NutritionRecord {
   totalFiber: number;
   totalSugar: number;
   totalSodium: number;
+  photoUrls?: string[];
   photoUrl?: string;
+  isDraft?: boolean;
   createdAt: string;
   updatedAt: string;
   __v?: number;

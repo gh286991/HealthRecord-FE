@@ -23,7 +23,8 @@ export interface CreateNutritionRecord {
   mealType: '早餐' | '午餐' | '晚餐' | '點心';
   foods: FoodItem[];
   notes?: string;
-  photoUrl?: string;
+  price?: number;
+  photoUrls?: string[];
   isDraft?: boolean;
 }
 
@@ -32,7 +33,8 @@ export interface UpdateNutritionRecord {
   mealType?: '早餐' | '午餐' | '晚餐' | '點心';
   foods?: FoodItem[];
   notes?: string;
-  photoUrl?: string;
+  price?: number;
+  photoUrls?: string[];
   isDraft?: boolean;
 }
 
@@ -50,10 +52,27 @@ export interface NutritionRecord {
   totalSugar: number;
   totalSodium: number;
   notes?: string;
-  photoUrl?: string;
+  price?: number;
+  photoUrls?: string[];
+  photoUrl?: string; // For backward compatibility
   isDraft?: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface DailySummary {
+  date: string;
+  records: NutritionRecord[];
+  dailyTotals: {
+    totalCalories: number;
+    totalProtein: number;
+    totalCarbohydrates: number;
+    totalFat: number;
+    totalFiber: number;
+    totalSugar: number;
+    totalSodium: number;
+    mealCount: number;
+  };
 }
 
 
@@ -72,7 +91,7 @@ export const nutritionApiRtk = createApi({
   }),
   tagTypes: ['NutritionRecord'],
   endpoints: (builder) => ({
-    // 獲取飲食記錄列表
+    // ... other endpoints
     getNutritionRecords: builder.query<NutritionRecord[], { date?: string }>({
       query: ({ date }) => ({
         url: '/diet-records',
@@ -81,13 +100,11 @@ export const nutritionApiRtk = createApi({
       providesTags: ['NutritionRecord'],
     }),
 
-    // 獲取單一飲食記錄
     getNutritionRecord: builder.query<NutritionRecord, string>({
       query: (id) => `/diet-records/${id}`,
       providesTags: (result, error, id) => [{ type: 'NutritionRecord', id }],
     }),
 
-    // 創建飲食記錄
     createNutritionRecord: builder.mutation<NutritionRecord, CreateNutritionRecord>({
       query: (data) => ({
         url: '/diet-records',
@@ -97,17 +114,14 @@ export const nutritionApiRtk = createApi({
       invalidatesTags: ['NutritionRecord'],
     }),
 
-    // 創建草稿飲食記錄
     createDraftRecord: builder.mutation<NutritionRecord, CreateNutritionRecord>({
       query: (data) => ({
         url: '/diet-records/draft',
         method: 'POST',
         body: data,
       }),
-      // 草稿記錄不會在列表中顯示，所以不需要 invalidatesTags
     }),
 
-    // 更新飲食記錄
     updateNutritionRecord: builder.mutation<NutritionRecord, { id: string; data: UpdateNutritionRecord }>({
       query: ({ id, data }) => ({
         url: `/diet-records/${id}`,
@@ -117,7 +131,6 @@ export const nutritionApiRtk = createApi({
       invalidatesTags: ['NutritionRecord'],
     }),
 
-    // 刪除飲食記錄
     deleteNutritionRecord: builder.mutation<{ message: string }, string>({
       query: (id) => ({
         url: `/diet-records/${id}`,
@@ -126,21 +139,7 @@ export const nutritionApiRtk = createApi({
       invalidatesTags: ['NutritionRecord'],
     }),
 
-    // 獲取每日摘要
-    getDailySummary: builder.query<{
-      date: string;
-      records: NutritionRecord[];
-      dailyTotals: {
-        totalCalories: number;
-        totalProtein: number;
-        totalCarbohydrates: number;
-        totalFat: number;
-        totalFiber: number;
-        totalSugar: number;
-        totalSodium: number;
-        mealCount: number;
-      };
-    }, string>({
+    getDailySummary: builder.query<DailySummary, string>({
       query: (date) => ({
         url: '/diet-records/daily-summary',
         params: { date },
@@ -148,14 +147,27 @@ export const nutritionApiRtk = createApi({
       providesTags: ['NutritionRecord'],
     }),
 
-    // 獲取有記錄的日期標記
     getMarkedDates: builder.query<string[], { year: number; month: number }>({
       query: ({ year, month }) => `/diet-records/marked-dates/${year}/${month}`,
       providesTags: ['NutritionRecord'],
     }),
 
-    // 上傳照片
-    uploadPhoto: builder.mutation<{ photoUrl: string }, { id: string; file: File }>({
+    // 上傳多張照片
+    uploadPhotos: builder.mutation<{ photoUrls: string[] }, { id: string; files: File[] }>({
+      query: ({ id, files }) => {
+        const formData = new FormData();
+        files.forEach(file => formData.append('files', file));
+        return {
+          url: `/diet-records/${id}/photos`,
+          method: 'POST',
+          body: formData,
+        };
+      },
+      invalidatesTags: ['NutritionRecord'],
+    }),
+
+    // 上傳單張照片 (舊版相容)
+    uploadPhoto: builder.mutation<{ photoUrls: string[] }, { id: string; file: File }>({
       query: ({ id, file }) => {
         const formData = new FormData();
         formData.append('file', file);
@@ -175,7 +187,6 @@ export const nutritionApiRtk = createApi({
         method: 'POST',
         body: { photoUrl },
       }),
-      // 這個操作不會直接修改伺服器上的記錄，所以不需要 invalidatesTags
     }),
   }),
 });
@@ -188,6 +199,7 @@ export const {
   useUpdateNutritionRecordMutation,
   useDeleteNutritionRecordMutation,
   useGetMarkedDatesQuery,
-  useUploadPhotoMutation,
-  useAnalyzePhotoMutation, // 新增導出
+  useUploadPhotosMutation,
+  useUploadPhotoMutation, // Added back for compatibility
+  useAnalyzePhotoMutation,
 } = nutritionApiRtk;

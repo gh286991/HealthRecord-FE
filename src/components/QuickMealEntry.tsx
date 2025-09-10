@@ -112,7 +112,7 @@ export default function QuickMealEntry({ mealType, onSave, onCancel }: QuickMeal
           }
           try {
             const photoResult = await uploadPhoto({ id: newRecord._id, file: photoFile }).unwrap();
-            newRecord.photoUrl = photoResult.photoUrl; // 更新記錄的photoUrl
+            newRecord.photoUrls = photoResult.photoUrls; // 更新記錄的photoUrls
             console.log('圖片上傳成功');
           } catch (uploadError) {
             console.warn('圖片上傳失敗，但記錄已保存:', uploadError);

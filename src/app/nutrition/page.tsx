@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { tokenUtils, NutritionRecord } from '@/lib/api';
+import { tokenUtils } from '@/lib/api';
+import type { NutritionRecord as NutritionRecordApi } from '@/lib/nutritionApi';
 import SimplifiedNutritionForm from '@/components/SimplifiedNutritionForm';
 import ImprovedNutritionList from '@/components/ImprovedNutritionList';
 import AppBackBar from '@/components/AppBackBar';
@@ -11,7 +12,7 @@ type ViewMode = 'list' | 'add' | 'edit';
 
 export default function NutritionPage() {
   const [viewMode, setViewMode] = useState<ViewMode>('list');
-  const [editingRecord, setEditingRecord] = useState<NutritionRecord | null>(null);
+  const [editingRecord, setEditingRecord] = useState<NutritionRecordApi | null>(null);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const router = useRouter();
@@ -32,12 +33,12 @@ export default function NutritionPage() {
     setViewMode('add');
   };
 
-  const handleEdit = (record: NutritionRecord) => {
+  const handleEdit = (record: NutritionRecordApi) => {
     setEditingRecord(record);
     setViewMode('edit');
   };
 
-  const handleFormSuccess = (updatedRecord: NutritionRecord) => {
+  const handleFormSuccess = (updatedRecord: NutritionRecordApi) => {
     if (editingRecord) {
       // 編輯模式：更新編輯中的記錄資料，停留在編輯模式
       setEditingRecord(updatedRecord);
@@ -100,7 +101,9 @@ export default function NutritionPage() {
                   sodium: food.sodium || 0,
                 })),
                 notes: editingRecord.notes || '',
-                photoUrl: editingRecord.photoUrl || '',
+                price: editingRecord.price,
+                photoUrl: editingRecord.photoUrl, // For backward compatibility
+                photoUrls: editingRecord.photoUrls, // Pass the new field
               } : { date: selectedDate }}
             />
           </div>

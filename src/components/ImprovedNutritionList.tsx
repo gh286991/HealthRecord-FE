@@ -2,6 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
+import { Swiper, SwiperSlide } from 'swiper/react';
+import { Pagination } from 'swiper/modules';
+import 'swiper/css';
+import 'swiper/css/pagination';
 import { NutritionRecord } from '@/lib/api';
 import { 
   useGetNutritionRecordsQuery, 
@@ -13,6 +17,7 @@ import IOSCalendar from '@/components/ios/IOSCalendar';
 import IOSWeekStrip from '@/components/ios/IOSWeekStrip';
 import Card from '@/components/Card';
 import IOSAlertModal from '@/components/ios/IOSAlertModal';
+import ImageModal from '@/components/ImageModal';
 
 interface ImprovedNutritionListProps {
   selectedDate: string;
@@ -33,6 +38,8 @@ export default function ImprovedNutritionList({ selectedDate, onDateChange, onAd
   const [isAlertOpen, setIsAlertOpen] = useState(false);
   const [alertInfo, setAlertInfo] = useState({ title: '', message: '' });
   const [recordToDelete, setRecordToDelete] = useState<string | null>(null);
+  const [isImageModalOpen, setIsImageModalOpen] = useState(false);
+  const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(null);
 
 
   // 月曆開啟時鎖定背景滾動
@@ -339,24 +346,84 @@ export default function ImprovedNutritionList({ selectedDate, onDateChange, onAd
                 </div>
               )}
 
-              {/* 圖片 - 響應式設計 */}
-              {record.photoUrl && (
-                <div className="mb-4">
-                  <div className="relative w-full max-w-sm mx-auto">
-                    <Image
-                      {...getSafeImageProps(record.photoUrl)}
-                      alt="餐點照片"
-                      width={320}
-                      height={240}
-                      className="w-full h-auto max-h-60 object-cover rounded-lg"
-                    />
+              {/* 圖片 - 可滑動多圖 (相容舊版) */}
+              {(() => {
+                const urls = (record.photoUrls && record.photoUrls.length > 0)
+                  ? record.photoUrls
+                  : (record.photoUrl ? [record.photoUrl] : []);
+
+                if (urls.length === 0) return null;
+
+                // If more than one image, render the slider
+                if (urls.length > 1) {
+                  return (
+                    <div className="-mx-4 mb-4 relative">
+                      <Swiper
+                        modules={[Pagination]}
+                        spaceBetween={10}
+                        slidesPerView={1.2}
+                        centeredSlides={true}
+                        pagination={{ clickable: true }}
+                        className="!pb-8"
+                      >
+                        {urls.map((url, index) => (
+                          <SwiperSlide 
+                            key={index} 
+                            onClick={() => {
+                              setSelectedImageUrl(url);
+                              setIsImageModalOpen(true);
+                            }}
+                            className="cursor-pointer"
+                          >
+                            <div className="w-full h-60 relative">
+                              <Image
+                                {...getSafeImageProps(url)}
+                                alt={`餐點照片 ${index + 1}`}
+                                layout="fill"
+                                className="object-cover rounded-lg shadow-md"
+                              />
+                            </div>
+                          </SwiperSlide>
+                        ))}
+                      </Swiper>
+                    </div>
+                  );
+                }
+
+                // If only one image, render a single image
+                return (
+                  <div className="mb-4 relative">
+                    <div 
+                      className="w-full h-60 relative cursor-pointer"
+                      onClick={() => {
+                        setSelectedImageUrl(urls[0]);
+                        setIsImageModalOpen(true);
+                      }}
+                    >
+                      <Image
+                        {...getSafeImageProps(urls[0])}
+                        alt={`餐點照片 1`}
+                        layout="fill"
+                        className="object-cover rounded-lg shadow-md"
+                      />
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Price */}
+              {record.price && record.price > 0 && (
+                <div className="mt-4 pt-4 border-t border-gray-100">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium text-gray-600">花費金額</span>
+                    <span className="text-lg font-semibold text-blue-600">${formatNumber(record.price)}</span>
                   </div>
                 </div>
               )}
 
               {/* 備註 */}
               {record.notes && (
-                <div className="p-3 bg-blue-50 rounded-lg">
+                <div className="mt-4 pt-4 border-t border-gray-100">
                   <p className="text-sm text-gray-700">{record.notes}</p>
                 </div>
               )}
@@ -401,6 +468,12 @@ export default function ImprovedNutritionList({ selectedDate, onDateChange, onAd
           setIsAlertOpen(false);
         }}
         
+      />
+
+      <ImageModal 
+        isOpen={isImageModalOpen}
+        onClose={() => setIsImageModalOpen(false)}
+        imageUrl={selectedImageUrl}
       />
     </div>
   );
