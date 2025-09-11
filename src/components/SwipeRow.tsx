@@ -5,8 +5,11 @@ import React, { useEffect, useMemo, useRef, useState, useCallback } from "react"
 type SwipeRowProps = {
   children: React.ReactNode;
   onDelete?: () => void;
+  onEdit?: () => void;
   deleteText?: string;
   deleteWidth?: number; // px
+  editText?: string;
+  editWidth?: number; // px
   className?: string;
 };
 
@@ -14,8 +17,11 @@ type SwipeRowProps = {
 export default function SwipeRow({
   children,
   onDelete,
+  onEdit,
   deleteText = "刪除",
   deleteWidth = 88,
+  editText = "編輯",
+  editWidth = 88,
   className,
 }: SwipeRowProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -24,7 +30,8 @@ export default function SwipeRow({
   const isDraggingRef = useRef(false);
   const [offset, setOffset] = useState(0);
 
-  const maxOffset = useMemo(() => -Math.abs(deleteWidth), [deleteWidth]);
+  const minLeft = useMemo(() => -Math.abs(deleteWidth), [deleteWidth]);
+  const maxRight = useMemo(() => Math.abs(editWidth), [editWidth]);
 
   const handleStart = useCallback((clientX: number) => {
     startXRef.current = clientX - currentXRef.current;
@@ -34,20 +41,24 @@ export default function SwipeRow({
   const handleMove = useCallback((clientX: number) => {
     if (!isDraggingRef.current || startXRef.current === null) return;
     const delta = clientX - startXRef.current;
-    const next = Math.min(0, Math.max(maxOffset - 24, delta));
+    const next = Math.max(minLeft - 24, Math.min(maxRight + 24, delta));
     currentXRef.current = next;
     setOffset(next);
-  }, [maxOffset]);
+  }, [minLeft, maxRight]);
 
   const handleEnd = useCallback(() => {
     if (!isDraggingRef.current) return;
     isDraggingRef.current = false;
     // snap logic
-    const shouldOpen = offset < maxOffset * 0.4; // passed 40% of delete width
-    const finalOffset = shouldOpen ? maxOffset : 0;
+    let finalOffset = 0;
+    if (offset < minLeft * 0.4) {
+      finalOffset = minLeft; // open delete (left)
+    } else if (offset > maxRight * 0.4) {
+      finalOffset = maxRight; // open edit (right)
+    }
     currentXRef.current = finalOffset;
     setOffset(finalOffset);
-  }, [maxOffset, offset]);
+  }, [minLeft, maxRight, offset]);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -77,10 +88,39 @@ export default function SwipeRow({
       window.removeEventListener("mousemove", onMouseMove);
       window.removeEventListener("mouseup", onMouseUp);
     };
-  }, [maxOffset, offset, handleStart, handleMove, handleEnd]);
+  }, [minLeft, maxRight, offset, handleStart, handleMove, handleEnd]);
 
   return (
     <div className={className} ref={containerRef} style={{ position: "relative", overflow: "hidden" }}>
+      {/* Left action: Edit */}
+      {onEdit && (
+        <div
+          aria-hidden
+          style={{
+            position: "absolute",
+            left: 0,
+            top: 0,
+            bottom: 0,
+            width: editWidth,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "#3b82f6",
+            color: "white",
+            pointerEvents: offset === 0 ? "none" : "auto",
+            userSelect: "none",
+          }}
+        >
+          <button
+            type="button"
+            onClick={onEdit}
+            style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 600 }}
+          >
+            {editText}
+          </button>
+        </div>
+      )}
+
       <div
         aria-hidden
         style={{
@@ -127,5 +167,3 @@ export default function SwipeRow({
     </div>
   );
 }
-
-

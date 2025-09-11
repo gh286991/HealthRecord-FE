@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
+import SwipeRow from '@/components/SwipeRow';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import { Pagination } from 'swiper/modules';
 import 'swiper/css';
@@ -121,11 +122,10 @@ export default function ImprovedNutritionList({ selectedDate, onDateChange, onAd
     if (!iso) return '';
     const d = new Date(iso);
     if (Number.isNaN(d.getTime())) return '';
-    try {
-      return d.toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' });
-    } catch {
-      return '';
-    }
+    // 固定為 HH:mm，避免多語系造成的換行或 hydration 差異
+    const hh = String(d.getHours()).padStart(2, '0');
+    const mm = String(d.getMinutes()).padStart(2, '0');
+    return `${hh}:${mm}`;
   };
 
   const isToday = (dateString: string) => {
@@ -157,6 +157,11 @@ export default function ImprovedNutritionList({ selectedDate, onDateChange, onAd
 
   const summaryLabel = isToday(selectedDate) ? '今日' : '總計';
 
+  // 小型模糊占位圖（16:9 灰色漸層）
+  const BLUR_DATA_URL = 'data:image/svg+xml;base64,' + btoa(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="9" viewBox="0 0 16 9"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#e5e7eb" offset="0"/><stop stop-color="#f3f4f6" offset="1"/></linearGradient></defs><rect width="16" height="9" fill="url(#g)"/></svg>`
+  );
+
   if (loading) {
     return (
       <div className="flex justify-center items-center py-8">
@@ -165,6 +170,16 @@ export default function ImprovedNutritionList({ selectedDate, onDateChange, onAd
       </div>
     );
   }
+
+  // 頁面渲染前先計算 totals，避免多次呼叫與未定義錯誤
+  const totals = getDailyTotals();
+
+  // 以時間排序：最新在最上面
+  const sortedRecords = [...records].sort((a, b) => {
+    const ta = new Date(a.createdAt || a.updatedAt || a.date).getTime();
+    const tb = new Date(b.createdAt || b.updatedAt || b.date).getTime();
+    return tb - ta;
+  });
 
   return (
     <div className="max-w-4xl mx-auto px-4">
@@ -213,50 +228,45 @@ export default function ImprovedNutritionList({ selectedDate, onDateChange, onAd
             <IOSWeekStrip selectedDate={selectedDate} onChange={onDateChange} />
           </div>
           <div className="w-full max-w-2xl">
-            <Card className="p-3">
-              <div className="grid grid-cols-7 divide-x divide-gray-100">
-                <div className="text-center px-2">
-                  <div className="text-[10px] text-gray-500">攝取 / {summaryLabel}</div>
-                  <div className="text-lg font-semibold text-green-600">{formatNumber(getDailyTotals().totalCalories)}</div>
-                  <div className="text-[10px] text-gray-400">卡路里</div>
+            <Card className="p-3 sm:p-1">
+              <div className="overflow-x-auto -mx-1 px-1">
+                <div className="flex items-stretch gap-1.5 sm:gap-0 sm:grid sm:grid-cols-7 sm:divide-x sm:divide-gray-100">
+                  <div className="min-w-[70px] sm:min-w-0 text-center px-1 py-1 rounded-lg sm:rounded-none bg-white sm:bg-transparent border border-gray-100 sm:border-0">
+                    <div className="text-[10px] text-gray-500">攝取 / {summaryLabel}</div>
+                    <div className="text-xl font-semibold text-emerald-600 leading-none">{formatNumber(totals.totalCalories)}</div>
+                    <div className="text-[10px] text-gray-400">卡路里</div>
+                  </div>
+                  <div className="min-w-[60px] sm:min-w-0 text-center px-1 py-1 rounded-lg sm:rounded-none bg-white sm:bg-transparent border border-gray-100 sm:border-0">
+                    <div className="text-[10px] text-gray-500">{summaryLabel}</div>
+                    <div className="text-base font-semibold text-gray-900 leading-none">{formatNumber(totals.totalProtein)}</div>
+                    <div className="text-[10px] text-gray-500">蛋白質</div>
+                  </div>
+                  <div className="min-w-[60px] sm:min-w-0 text-center px-1 py-1 rounded-lg sm:rounded-none bg-white sm:bg-transparent border border-gray-100 sm:border-0">
+                    <div className="text-[10px] text-gray-500">{summaryLabel}</div>
+                    <div className="text-base font-semibold text-gray-900 leading-none">{formatNumber(totals.totalCarbohydrates)}</div>
+                    <div className="text-[10px] text-gray-500">碳水</div>
+                  </div>
+                  <div className="min-w-[60px] sm:min-w-0 text-center px-1 py-1 rounded-lg sm:rounded-none bg-white sm:bg-transparent border border-gray-100 sm:border-0">
+                    <div className="text-[10px] text-gray-500">{summaryLabel}</div>
+                    <div className="text-base font-semibold text-gray-900 leading-none">{formatNumber(totals.totalFat)}</div>
+                    <div className="text-[10px] text-gray-500">脂肪</div>
+                  </div>
+                  <div className="min-w-[60px] sm:min-w-0 text-center px-1 py-1 rounded-lg sm:rounded-none bg-white sm:bg-transparent border border-gray-100 sm:border-0">
+                    <div className="text-[10px] text-gray-500">{summaryLabel}</div>
+                    <div className="text-base font-semibold text-gray-900 leading-none">{formatNumber(totals.totalFiber)}</div>
+                    <div className="text-[10px] text-gray-500">纖維</div>
+                  </div>
+                  <div className="min-w-[60px] sm:min-w-0 text-center px-1 py-1 rounded-lg sm:rounded-none bg-white sm:bg-transparent border border-gray-100 sm:border-0">
+                    <div className="text-[10px] text-gray-500">{summaryLabel}</div>
+                    <div className="text-base font-semibold text-gray-900 leading-none">{formatNumber(totals.totalSugar)}</div>
+                    <div className="text-[10px] text-gray-500">糖分</div>
+                  </div>
+                  <div className="min-w-[60px] sm:min-w-0 text-center px-1 py-1 rounded-lg sm:rounded-none bg-white sm:bg-transparent border border-gray-100 sm:border-0">
+                    <div className="text-[10px] text-gray-500">{summaryLabel}</div>
+                    <div className="text-base font-semibold text-gray-900 leading-none">{formatNumber(totals.totalSodium)}</div>
+                    <div className="text-[10px] text-gray-500">鈉</div>
+                  </div>
                 </div>
-                {(() => {
-                  const totals = getDailyTotals();
-                  return (
-                    <>
-                      <div className="text-center px-2">
-                        <div className="text-[10px] text-gray-500">{summaryLabel}</div>
-                        <div className="text-base font-semibold text-gray-800">{formatNumber(totals.totalProtein)}</div>
-                        <div className="text-[10px] text-gray-400">蛋白質</div>
-                      </div>
-                      <div className="text-center px-2">
-                        <div className="text-[10px] text-gray-500">{summaryLabel}</div>
-                        <div className="text-base font-semibold text-gray-800">{formatNumber(totals.totalCarbohydrates)}</div>
-                        <div className="text-[10px] text-gray-400">碳水</div>
-                      </div>
-                      <div className="text-center px-2">
-                        <div className="text-[10px] text-gray-500">{summaryLabel}</div>
-                        <div className="text-base font-semibold text-gray-800">{formatNumber(totals.totalFat)}</div>
-                        <div className="text-[10px] text-gray-400">脂肪</div>
-                      </div>
-                      <div className="text-center px-2">
-                        <div className="text-[10px] text-gray-500">{summaryLabel}</div>
-                        <div className="text-base font-semibold text-gray-800">{formatNumber(totals.totalFiber)}</div>
-                        <div className="text-[10px] text-gray-400">纖維</div>
-                      </div>
-                      <div className="text-center px-2">
-                        <div className="text-[10px] text-gray-500">{summaryLabel}</div>
-                        <div className="text-base font-semibold text-gray-800">{formatNumber(totals.totalSugar)}</div>
-                        <div className="text-[10px] text-gray-400">糖分</div>
-                      </div>
-                      <div className="text-center px-2">
-                        <div className="text-[10px] text-gray-500">{summaryLabel}</div>
-                        <div className="text-base font-semibold text-gray-800">{formatNumber(totals.totalSodium)}</div>
-                        <div className="text-[10px] text-gray-400">鈉</div>
-                      </div>
-                    </>
-                  );
-                })()}
               </div>
             </Card>
           </div>
@@ -272,76 +282,71 @@ export default function ImprovedNutritionList({ selectedDate, onDateChange, onAd
             <p className="text-gray-600 mb-6">點擊上方按鈕開始記錄你的飲食吧！</p>
           </div>
         ) : (
-          records.map((record) => (
-            <div key={record._id} className="bg-white rounded-xl shadow-md p-4 hover:shadow-lg transition-shadow max-w-full overflow-hidden">
+          sortedRecords.map((record) => {
+            const completeRecord = {
+              ...record,
+              foods: record.foods.map(food => ({
+                ...food,
+                protein: food.protein || 0,
+                carbohydrates: food.carbohydrates || 0,
+                fat: food.fat || 0,
+                fiber: food.fiber || 0,
+                sugar: food.sugar || 0,
+                sodium: food.sodium || 0,
+              }))
+            };
+
+            return (
+            <SwipeRow
+              key={record._id}
+              className="rounded-xl shadow-md hover:shadow-lg transition-shadow"
+              onDelete={() => handleDeleteConfirmation(record._id)}
+              onEdit={() => onEdit(completeRecord)}
+            >
+            <div className="bg-white rounded-xl p-4 max-w-full overflow-hidden">
               {/* 頂部資訊列 */}
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center flex-1 min-w-0">
-                  <span className="text-2xl mr-3">{mealTypeIcons[record.mealType as keyof typeof mealTypeIcons]}</span>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-lg font-semibold text-gray-900">{record.mealType}</h3>
-                    <p className="text-sm text-gray-600">{formatRecordTime(record)}</p>
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center flex-1 min-w-0 gap-2">
+                  <span className="text-2xl">{mealTypeIcons[record.mealType as keyof typeof mealTypeIcons]}</span>
+                  <div className="flex items-baseline gap-2 min-w-0 truncate">
+                    <span className="text-lg font-semibold text-gray-900 whitespace-nowrap">{record.mealType}</span>
+                    <span className="text-sm text-gray-600 whitespace-nowrap">• {formatRecordTime(record)}</span>
                   </div>
                 </div>
-                
-                <div className="flex items-center gap-3">
-                  <div className="text-right">
-                    <div className="text-xl font-bold text-green-600">{formatNumber(record.totalCalories || 0)}</div>
-                    <div className="text-xs text-gray-500">卡路里</div>
-                  </div>
-                  
-                  {/* 操作按鈕 */}
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => {
-                        // 使用帶有完整營養素字段的記錄資料進行編輯
-                        const completeRecord = {
-                          ...record,
-                          foods: record.foods.map(food => ({
-                            ...food,
-                            protein: food.protein || 0,
-                            carbohydrates: food.carbohydrates || 0,
-                            fat: food.fat || 0,
-                            fiber: food.fiber || 0,
-                            sugar: food.sugar || 0,
-                            sodium: food.sodium || 0,
-                          }))
-                        };
-                        onEdit(completeRecord);
-                      }}
-                      className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                    >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                      </svg>
-                    </button>
-                    <button
-                      onClick={() => handleDeleteConfirmation(record._id)}
-                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                    >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                    </button>
-                  </div>
+                <div className="flex items-center">
+                  <span className="inline-flex items-center rounded-full bg-emerald-50 text-emerald-700 px-2.5 py-1 text-xs font-medium">
+                    {formatNumber(record.totalCalories || 0)} 卡
+                  </span>
                 </div>
+              </div>
+
+              {/* 營養素重點（可選） */}
+              <div className="mb-3 flex flex-wrap gap-2">
+                {!!record.totalProtein && (
+                  <span className="inline-flex items-center rounded-full bg-indigo-50 text-indigo-700 px-2.5 py-1 text-[11px]">
+                    蛋白 {formatNumber(record.totalProtein)}g
+                  </span>
+                )}
+                {!!record.totalCarbohydrates && (
+                  <span className="inline-flex items-center rounded-full bg-amber-50 text-amber-700 px-2.5 py-1 text-[11px]">
+                    碳水 {formatNumber(record.totalCarbohydrates)}g
+                  </span>
+                )}
+                {!!record.totalFat && (
+                  <span className="inline-flex items-center rounded-full bg-rose-50 text-rose-700 px-2.5 py-1 text-[11px]">
+                    脂肪 {formatNumber(record.totalFat)}g
+                  </span>
+                )}
               </div>
 
               {/* 食物列表 */}
               {record.foods && record.foods.length > 0 && (
-                <div className="space-y-2 mb-4">
+                <div className="mb-4 flex flex-wrap gap-2">
                   {record.foods.map((food, index) => (
-                    <div key={index} className="flex items-center justify-between py-2 px-3 bg-gray-50 rounded-lg">
-                      <div className="flex-1 min-w-0">
-                        <span className="font-medium text-gray-900">{food.foodName}</span>
-                        {food.description && (
-                          <span className="text-gray-600 ml-2">({food.description})</span>
-                        )}
-                      </div>
-                      <div className="text-sm text-green-600 font-medium ml-2">
-                        {formatNumber(food.calories || 0)} 卡
-                      </div>
-                    </div>
+                    <span key={index} className="inline-flex items-center rounded-full bg-gray-50 text-gray-700 px-2.5 py-1 text-[12px]">
+                      <span className="truncate max-w-[10rem]">{food.foodName}</span>
+                      <span className="ml-1 text-gray-500">{formatNumber(food.calories || 0)}卡</span>
+                    </span>
                   ))}
                 </div>
               )}
@@ -375,13 +380,17 @@ export default function ImprovedNutritionList({ selectedDate, onDateChange, onAd
                             }}
                             className="cursor-pointer"
                           >
-                            <div className="w-full h-60 relative">
-                              <Image
-                                {...getSafeImageProps(url)}
-                                alt={`餐點照片 ${index + 1}`}
-                                layout="fill"
-                                className="object-cover rounded-lg shadow-md"
-                              />
+                            <div className="relative w-full overflow-hidden rounded-lg shadow-md">
+                              <div className="relative w-full pt-[56.25%]">
+                                <Image
+                                  {...getSafeImageProps(url)}
+                                  alt={`餐點照片 ${index + 1}`}
+                                  fill
+                                  placeholder="blur"
+                                  blurDataURL={BLUR_DATA_URL}
+                                  className="object-cover"
+                                />
+                              </div>
                             </div>
                           </SwiperSlide>
                         ))}
@@ -392,20 +401,24 @@ export default function ImprovedNutritionList({ selectedDate, onDateChange, onAd
 
                 // If only one image, render a single image
                 return (
-                  <div className="mb-4 relative">
+                  <div className="mb-4">
                     <div 
-                      className="w-full h-60 relative cursor-pointer"
+                      className="relative w-full cursor-pointer overflow-hidden rounded-lg shadow-md"
                       onClick={() => {
                         setSelectedImageUrl(urls[0]);
                         setIsImageModalOpen(true);
                       }}
                     >
-                      <Image
-                        {...getSafeImageProps(urls[0])}
-                        alt={`餐點照片 1`}
-                        layout="fill"
-                        className="object-cover rounded-lg shadow-md"
-                      />
+                      <div className="relative w-full pt-[56.25%]">
+                        <Image
+                          {...getSafeImageProps(urls[0])}
+                          alt={`餐點照片 1`}
+                          fill
+                          placeholder="blur"
+                          blurDataURL={BLUR_DATA_URL}
+                          className="object-cover"
+                        />
+                      </div>
                     </div>
                   </div>
                 );
@@ -428,7 +441,9 @@ export default function ImprovedNutritionList({ selectedDate, onDateChange, onAd
                 </div>
               )}
             </div>
-          ))
+            </SwipeRow>
+          );
+          })
         )}
       </div>
 
