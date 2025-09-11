@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import SafeLink from "@/components/SafeLink";
 import { usePathname } from "next/navigation";
 import { useSelector } from "react-redux";
 import type { RootState } from "@/lib/store";
@@ -36,7 +36,7 @@ export default function MobileTabBar() {
             const active = pathname === href;
             return (
               <li key={href} className="flex items-center justify-center">
-                <Link
+                <SafeLink
                   href={href}
                   className={`inline-flex flex-col items-center justify-center gap-0.5 text-[11px] ${
                     active ? "text-emerald-600" : "text-gray-600 hover:text-gray-900"
@@ -45,7 +45,7 @@ export default function MobileTabBar() {
                 >
                   <Icon className="h-5 w-5" />
                   <span className="leading-none">{label}</span>
-                </Link>
+                </SafeLink>
               </li>
             );
           })}
