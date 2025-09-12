@@ -436,6 +436,11 @@ export default function ImprovedNutritionList({ selectedDate, onDateChange, onAd
                     <span className="text-sm font-medium text-gray-600">花費金額</span>
                     <span className="text-lg font-semibold text-blue-600">${formatNumber(record.price)}</span>
                   </div>
+                  {record.paymentMethod && (
+                    <div className="mt-1 text-xs text-gray-500">
+                      付款方式：{record.paymentMethod === 'cash' ? '現金' : record.paymentMethod === 'card' ? '信用卡' : record.paymentMethod === 'mobile' ? '行動支付' : '其他'}
+                    </div>
+                  )}
                 </div>
               )}
 

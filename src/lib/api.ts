@@ -86,6 +86,7 @@ export interface UserProfile {
   weight?: number;
   activityLevel?: ActivityLevel;
   goal?: Goal;
+  showPaymentMethod?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -100,6 +101,7 @@ export interface UpdateUserData {
   weight?: number;
   activityLevel?: ActivityLevel;
   goal?: Goal;
+  showPaymentMethod?: boolean;
 }
 
 // 活動量枚舉
@@ -126,6 +128,7 @@ export interface NutritionRecord {
   foods: FoodItem[];
   notes?: string;
   price?: number;
+  paymentMethod?: 'cash' | 'card' | 'mobile' | 'other';
   totalCalories: number;
   totalProtein: number;
   totalCarbohydrates: number;

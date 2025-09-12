@@ -100,11 +100,12 @@ export default function NutritionPage() {
                   sugar: food.sugar || 0,
                   sodium: food.sodium || 0,
                 })),
-                notes: editingRecord.notes || '',
-                price: editingRecord.price,
-                photoUrl: editingRecord.photoUrl, // For backward compatibility
-                photoUrls: editingRecord.photoUrls, // Pass the new field
-              } : { date: selectedDate }}
+              notes: editingRecord.notes || '',
+              price: editingRecord.price,
+              paymentMethod: editingRecord.paymentMethod,
+              photoUrl: editingRecord.photoUrl, // For backward compatibility
+              photoUrls: editingRecord.photoUrls, // Pass the new field
+            } : { date: selectedDate }}
             />
           </div>
         )}

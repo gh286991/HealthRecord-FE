@@ -16,9 +16,11 @@ import {
   UpdateNutritionRecord,
   FoodItem,
 } from '@/lib/nutritionApi';
+import { useGetProfileQuery } from '@/lib/authApi';
 import { compressImage } from '@/lib/imageCompress';
 import IOSAlertModal from '@/components/ios/IOSAlertModal';
 import LoadingModal from '@/components/ios/LoadingModal';
+import IOSWheelPicker from '@/components/ios/IOSWheelPicker';
 
 const simplifiedNutritionSchema = z.object({
   mealType: z.enum(['早餐', '午餐', '晚餐', '點心']),
@@ -36,6 +38,7 @@ const simplifiedNutritionSchema = z.object({
   })).default([]),
   notes: z.string().optional(),
   price: z.number().min(0).optional(),
+  paymentMethod: z.enum(['cash','card','mobile','other']).optional(),
   photoUrls: z.array(z.string()).optional(),
 });
 
@@ -50,6 +53,7 @@ interface SimplifiedNutritionFormProps {
     price?: number;
     photoUrls?: string[];
     photoUrl?: string; // For backward compatibility
+    paymentMethod?: 'cash' | 'card' | 'mobile' | 'other';
   };
   recordId?: string;
 }
@@ -60,6 +64,17 @@ const mealTypeOptions = [
   { value: '晚餐', label: '晚餐', icon: '🌙' },
   { value: '點心', label: '點心', icon: '🍎' },
 ];
+
+const paymentMethodOptions = [
+  { value: 'cash', label: '現金' },
+  { value: 'card', label: '信用卡' },
+  { value: 'mobile', label: '行動支付' },
+  { value: 'other', label: '其他' },
+];
+
+const getPaymentMethodLabel = (value?: string) => {
+  return paymentMethodOptions.find(o => o.value === value)?.label || '未選擇';
+}
 
 export default function SimplifiedNutritionForm({ 
   onSuccess, 
@@ -74,12 +89,14 @@ export default function SimplifiedNutritionForm({
 
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
+  const [isPaymentPickerOpen, setPaymentPickerOpen] = useState(false);
 
   const [createNutritionRecord] = useCreateNutritionRecordMutation();
   const [createDraftRecord] = useCreateDraftRecordMutation();
   const [updateNutritionRecord] = useUpdateNutritionRecordMutation();
   const [uploadPhotos] = useUploadPhotosMutation();
   const [analyzePhoto] = useAnalyzePhotoMutation();
+  const { data: profile } = useGetProfileQuery();
 
   const form = useForm({
     resolver: zodResolver(simplifiedNutritionSchema),
@@ -89,6 +106,7 @@ export default function SimplifiedNutritionForm({
       foods: initialData?.foods || [],
       notes: initialData?.notes || '',
       price: initialData?.price || undefined,
+      paymentMethod: initialData?.paymentMethod || undefined,
       photoUrls: initialData?.photoUrls || [],
     },
   });
@@ -109,6 +127,7 @@ export default function SimplifiedNutritionForm({
         notes: initialData.notes || '',
         price: initialData.price || undefined,
         photoUrls: photoUrls,
+        paymentMethod: initialData.paymentMethod || undefined,
       };
       reset(resetData);
       replace(initialData.foods || []);
@@ -207,6 +226,7 @@ export default function SimplifiedNutritionForm({
           mealType: data.mealType,
           notes: data.notes,
           price: data.price,
+          paymentMethod: data.price ? data.paymentMethod : undefined,
           photoUrls: data.photoUrls,
           foods: normalizedFoods,
           isDraft: false,
@@ -219,6 +239,7 @@ export default function SimplifiedNutritionForm({
           mealType: data.mealType,
           notes: data.notes,
           price: data.price,
+          paymentMethod: data.price ? data.paymentMethod : undefined,
           photoUrls: data.photoUrls,
           foods: normalizedFoods,
           isDraft: false,
@@ -375,15 +396,41 @@ export default function SimplifiedNutritionForm({
           {analysisError && <p className="mt-2 text-sm text-red-600 text-center">{analysisError}</p>}
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">價錢（選填）</label>
-          <input 
-            type="number"
-            {...register('price', { valueAsNumber: true })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-gray-900"
-            placeholder="餐點花費金額"
-          />
+        <div className="flex gap-4">
+          <div className={profile?.showPaymentMethod ? "w-1/2" : "w-full"}>
+            <label className="block text-sm font-medium text-gray-700 mb-2">價錢（選填）</label>
+            <input 
+              type="number"
+              {...register('price', { valueAsNumber: true })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-gray-900"
+              placeholder="餐點花費金額"
+            />
+          </div>
+
+          {profile?.showPaymentMethod && (
+            <div className="w-1/2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">付款方式（選填）</label>
+              <div
+                  onClick={() => setPaymentPickerOpen(true)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent text-gray-900 flex justify-between items-center cursor-pointer"
+              >
+                  <span>{getPaymentMethodLabel(watch('paymentMethod'))}</span>
+                  <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"></path></svg>
+              </div>
+            </div>
+          )}
         </div>
+
+        <IOSWheelPicker
+            open={isPaymentPickerOpen}
+            onClose={() => setPaymentPickerOpen(false)}
+            options={paymentMethodOptions}
+            value={watch('paymentMethod') || 'cash'}
+            onChange={(newValue) => {
+                setValue('paymentMethod', newValue as 'cash' | 'card' | 'mobile' | 'other');
+            }}
+            title="選擇付款方式"
+        />
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">心得備註（選填）</label>

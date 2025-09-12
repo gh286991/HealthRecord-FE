@@ -45,6 +45,7 @@ export default function ProfilePage() {
         weight: data.weight || undefined,
         activityLevel: data.activityLevel || undefined,
         goal: data.goal || undefined,
+        showPaymentMethod: data.showPaymentMethod ?? false,
       });
     }
   }, [data]);
@@ -73,6 +74,11 @@ export default function ProfilePage() {
       setFormData(prev => ({
         ...prev,
         goal: value as Goal | undefined,
+      }));
+    } else if (name === 'showPaymentMethod') {
+      setFormData(prev => ({
+        ...prev,
+        showPaymentMethod: (e.target as HTMLInputElement).checked,
       }));
     } else {
       setFormData(prev => ({
@@ -114,6 +120,9 @@ export default function ProfilePage() {
       }
       if (formData.goal !== undefined) {
         submitData.goal = formData.goal;
+      }
+      if (formData.showPaymentMethod !== undefined) {
+        submitData.showPaymentMethod = formData.showPaymentMethod;
       }
 
       const updatedProfile = await updateProfile(submitData).unwrap();
@@ -357,6 +366,28 @@ export default function ProfilePage() {
                 </div>
               </div>
 
+              {/* 偏好設定（進階折疊） */}
+              <div className="mt-8">
+                <details className="rounded-lg border border-gray-200 bg-white open:shadow-sm">
+                  <summary className="cursor-pointer list-none px-4 py-3 font-medium text-gray-900 flex items-center justify-between">
+                    <span>進階與偏好</span>
+                    <span className="text-gray-500 text-sm">點擊展開/收合</span>
+                  </summary>
+                  <div className="px-4 pb-4">
+                    <label className="flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        name="showPaymentMethod"
+                        checked={!!formData.showPaymentMethod}
+                        onChange={handleChange}
+                        className="h-4 w-4"
+                      />
+                      <span className="text-sm text-gray-700">在新增飲食時顯示「付款方式」欄位（僅在填寫金額時顯示）</span>
+                    </label>
+                  </div>
+                </details>
+              </div>
+
               <div className="flex justify-end space-x-4 pt-6">
                 <Button
                   type="button"
@@ -373,6 +404,7 @@ export default function ProfilePage() {
                       weight: profile.weight || undefined,
                       activityLevel: profile.activityLevel || undefined,
                       goal: profile.goal || undefined,
+                      showPaymentMethod: profile.showPaymentMethod ?? false,
                     });
                   }}
                 >
@@ -453,6 +485,22 @@ export default function ProfilePage() {
                   </div>
                 </div>
               </div>
+
+              {/* 進階與偏好 */}
+              <details className="mt-8 rounded-lg border border-gray-200 bg-white">
+                <summary className="cursor-pointer list-none px-4 py-3 font-medium text-gray-900 flex items-center justify-between">
+                  <span>進階與偏好</span>
+                  <span className="text-gray-500 text-sm">點擊展開/收合</span>
+                </summary>
+                <div className="px-4 pb-4">
+                  <div className="flex justify-between items-center">
+                    <span className="font-medium text-gray-700">新增飲食時顯示「付款方式」欄位</span>
+                    <span className={`text-gray-900 ${profile.showPaymentMethod ? 'text-emerald-600' : 'text-gray-500'}`}>
+                      {profile.showPaymentMethod ? '已開啟' : '已關閉'}
+                    </span>
+                  </div>
+                </div>
+              </details>
             </div>
           )}
         </>

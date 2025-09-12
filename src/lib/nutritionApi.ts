@@ -24,6 +24,7 @@ export interface CreateNutritionRecord {
   foods: FoodItem[];
   notes?: string;
   price?: number;
+  paymentMethod?: 'cash' | 'card' | 'mobile' | 'other';
   photoUrls?: string[];
   isDraft?: boolean;
 }
@@ -34,6 +35,7 @@ export interface UpdateNutritionRecord {
   foods?: FoodItem[];
   notes?: string;
   price?: number;
+  paymentMethod?: 'cash' | 'card' | 'mobile' | 'other';
   photoUrls?: string[];
   isDraft?: boolean;
 }
@@ -53,6 +55,7 @@ export interface NutritionRecord {
   totalSodium: number;
   notes?: string;
   price?: number;
+  paymentMethod?: 'cash' | 'card' | 'mobile' | 'other';
   photoUrls?: string[];
   photoUrl?: string; // For backward compatibility
   isDraft?: boolean;
