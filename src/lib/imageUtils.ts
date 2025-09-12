@@ -10,6 +10,16 @@ export function formatImageUrl(url: string): string {
   
   // 如果已經是完整的URL，直接返回
   if (url.startsWith('http://') || url.startsWith('https://')) {
+    try {
+      const u = new URL(url);
+      // 針對已知網域，強制升級為 https 避免混合內容被瀏覽器阻擋
+      if (u.protocol === 'http:' && u.hostname === 'tomminio-api.zeabur.app') {
+        u.protocol = 'https:';
+        return u.toString();
+      }
+    } catch {
+      // ignore parse error and fall through
+    }
     return url;
   }
   
@@ -47,10 +57,27 @@ export function getSafeImageProps(url: string) {
   return {
     src: formatted,
     ...(isData || !isHttp ? { unoptimized: true } : {}),
+    crossOrigin: 'anonymous' as const,
+    // 失敗時自動重試 2 次並加上快取破壞參數，避免暫時性或快取問題
     onError: (e: React.SyntheticEvent<HTMLImageElement>) => {
-      console.error('圖片載入失敗:', url);
-      // 隱藏失敗的圖片
-      (e.target as HTMLImageElement).style.display = 'none';
+      const img = e.target as HTMLImageElement;
+      const tries = Number(img.dataset.retry || '0');
+      if (tries < 2) {
+        img.dataset.retry = String(tries + 1);
+        try {
+          const u = new URL(img.src, window.location.href);
+          u.searchParams.set('_cb', String(Date.now()));
+          img.src = u.toString();
+          return;
+        } catch {
+          // 若 URL 解析失敗，嘗試直接附加查詢參數
+          img.src = img.src + (img.src.includes('?') ? '&' : '?') + `_cb=${Date.now()}`;
+          return;
+        }
+      }
+      console.error('圖片載入最終失敗:', formatted);
+      // 最後才隱藏，避免第一時間就看不到
+      img.style.display = 'none';
     },
   };
 }

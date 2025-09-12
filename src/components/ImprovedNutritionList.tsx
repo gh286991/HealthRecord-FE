@@ -362,7 +362,7 @@ export default function ImprovedNutritionList({ selectedDate, onDateChange, onAd
                 // If more than one image, render the slider
                 if (urls.length > 1) {
                   return (
-                    <div className="-mx-4 mb-4 relative">
+                    <div className="-mx-4 mb-4 relative" data-swipe-ignore>
                       <Swiper
                         modules={[Pagination]}
                         spaceBetween={10}
@@ -386,6 +386,9 @@ export default function ImprovedNutritionList({ selectedDate, onDateChange, onAd
                                   {...getSafeImageProps(url)}
                                   alt={`餐點照片 ${index + 1}`}
                                   fill
+                                  // 第一張圖優先載入，降低偶發未載入的機率
+                                  priority={index === 0}
+                                  loading={index === 0 ? 'eager' : 'lazy'}
                                   placeholder="blur"
                                   blurDataURL={BLUR_DATA_URL}
                                   className="object-cover"
@@ -414,6 +417,8 @@ export default function ImprovedNutritionList({ selectedDate, onDateChange, onAd
                           {...getSafeImageProps(urls[0])}
                           alt={`餐點照片 1`}
                           fill
+                          priority
+                          loading="eager"
                           placeholder="blur"
                           blurDataURL={BLUR_DATA_URL}
                           className="object-cover"

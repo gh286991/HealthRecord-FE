@@ -17,6 +17,7 @@ import {
   Plus,
   Sparkles,
 } from "lucide-react";
+import ScrollReveal from "@/components/ScrollReveal";
 
 export default function Home() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -27,27 +28,29 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Banner */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10">
-        <div className="relative h-64 sm:h-80 lg:h-[420px] rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-          <Image
-            src="https://images.unsplash.com/photo-1512621776951-a57141f2eefd?q=80&auto=format&fit=crop&w=1600&h=900"
-            alt="新鮮食材與健康飲食的擺盤"
-            fill
-            priority
-            sizes="100vw"
-            className="object-cover"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/30 to-transparent" />
-          <div className="absolute bottom-0 left-0 right-0 p-5 sm:p-8">
-            <div className="max-w-3xl text-white">
+      {/* Scroll reveal activator */}
+      <ScrollReveal />
+      {/* Banner (full-bleed) */}
+      <div className="relative h-64 sm:h-80 lg:h-[420px] w-screen left-1/2 right-1/2 -ml-[50vw] -mr-[50vw]">
+        <Image
+          src="https://images.unsplash.com/photo-1512621776951-a57141f2eefd?q=80&auto=format&fit=crop&w=1600&h=900"
+          alt="新鮮食材與健康飲食的擺盤"
+          fill
+          priority
+          sizes="100vw"
+          className="object-cover will-change-transform motion-safe:animate-[kenburns_10s_ease-out_forwards]"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/30 to-transparent motion-safe:animate-[fade-in_600ms_ease-out]" />
+        <div className="absolute bottom-0 left-0 right-0">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 p-5 sm:p-8">
+            <div className="max-w-3xl text-white motion-safe:animate-[fade-up_700ms_ease-out_both]">
               <div className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs">
                 <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
                 AI 自動化分析
               </div>
-              <h1 className="mt-1 sm:mt-3 text-3xl sm:text-4xl font-semibold tracking-tight">輕鬆記錄飲食與運動，專注真正的變化</h1>
-              <p className="mt-2 hidden sm:block text-sm sm:text-base text-white/90">簡潔流程、關鍵指標與一致體驗，幫助你穩定地前進。</p>
-              <div className="mt-3 flex">
+              <h1 className="mt-1 sm:mt-3 text-3xl sm:text-4xl font-semibold tracking-tight [animation-delay:60ms]">輕鬆記錄飲食與運動，專注真正的變化</h1>
+              <p className="mt-2 hidden sm:block text-sm sm:text-base text-white/90 [animation-delay:120ms]">簡潔流程、關鍵指標與一致體驗，幫助你穩定地前進。</p>
+              <div className="mt-3 flex [animation-delay:180ms]">
                 {isLoggedIn ? (
                   <>
                     <Link
@@ -73,16 +76,19 @@ export default function Home() {
             <a
               href="#how-it-works"
               aria-label="捲動到使用方式"
-              className="absolute bottom-3 sm:bottom-4 left-1/2 -translate-x-1/2 inline-flex items-center gap-1 text-white text-xs sm:text-sm hover:text-white transition-colors rounded-full bg-black/35 sm:bg-transparent backdrop-blur-sm sm:backdrop-blur-0 px-2.5 py-1"
+              className="absolute bottom-3 sm:bottom-4 left-1/2 -translate-x-1/2 inline-flex items-center gap-1 text-white text-xs sm:text-sm hover:text-white transition-colors rounded-full bg-black/35 sm:bg-transparent backdrop-blur-sm sm:backdrop-blur-0 px-2.5 py-1 motion-safe:animate-[fade-up_800ms_ease-out_both] [animation-delay:240ms]"
             >
               <ChevronDown className="h-4 w-4 animate-bounce" />
               瞭解如何開始
             </a>
           </div>
         </div>
-      
+      </div>
+
+      {/* Main content */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10">
         {/* Features */}
-        <div className="mt-12 sm:mt-20 grid grid-cols-1 gap-4 sm:gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-12 sm:mt-20 grid grid-cols-1 gap-4 sm:gap-6 sm:grid-cols-2 lg:grid-cols-3" data-reveal-children>
           {/* 飲食紀錄 */}
           <div className="rounded-xl border border-gray-200 bg-white p-5 sm:p-6 shadow-sm">
             <div className="flex items-start gap-4">
@@ -230,11 +236,11 @@ export default function Home() {
 
         {/* Product preview */}
         <div className="mt-12 sm:mt-16">
-          <div className="max-w-3xl">
+          <div className="max-w-3xl" data-reveal>
             <h2 className="text-2xl font-semibold text-gray-900">產品預覽</h2>
             <p className="mt-2 text-gray-600">看看記錄與訓練的實際畫面，快速了解重點功能。</p>
           </div>
-          <div className="mt-5 sm:mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+          <div className="mt-5 sm:mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6" data-reveal-children>
             <div className="relative rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
               <div className="absolute inset-0">
                 <Image
@@ -269,11 +275,11 @@ export default function Home() {
         </div>
         {/* Pro features */}
         <div className="mt-16 sm:mt-24">
-          <div className="max-w-3xl">
+          <div className="max-w-3xl" data-reveal>
             <h2 className="text-2xl font-semibold text-gray-900">專業功能</h2>
             <p className="mt-2 text-gray-600">以實用與效率為核心，從記錄到分析都更順手。</p>
           </div>
-          <div className="mt-8 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+          <div className="mt-8 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4" data-reveal-children>
             <div className="rounded-lg border border-gray-200 bg-white p-4">
               <div className="flex items-center gap-2 text-gray-900">
                 <span className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-emerald-50 text-emerald-600">

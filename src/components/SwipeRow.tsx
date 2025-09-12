@@ -11,6 +11,10 @@ type SwipeRowProps = {
   editText?: string;
   editWidth?: number; // px
   className?: string;
+  // CSS selector or boolean function to ignore swipe handling
+  // when the gesture starts inside a matching element.
+  // By default, any element with `[data-swipe-ignore]` will be ignored.
+  ignoreSwipeWithin?: string | ((el: HTMLElement) => boolean);
 };
 
 // A lightweight left-swipe row for mobile and desktop
@@ -23,23 +27,35 @@ export default function SwipeRow({
   editText = "編輯",
   editWidth = 88,
   className,
+  ignoreSwipeWithin,
 }: SwipeRowProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const startXRef = useRef<number | null>(null);
   const currentXRef = useRef<number>(0);
   const isDraggingRef = useRef(false);
+  const ignoreGestureRef = useRef(false);
   const [offset, setOffset] = useState(0);
 
   const minLeft = useMemo(() => -Math.abs(deleteWidth), [deleteWidth]);
   const maxRight = useMemo(() => Math.abs(editWidth), [editWidth]);
 
-  const handleStart = useCallback((clientX: number) => {
+  const shouldIgnoreFromTarget = useCallback((target: EventTarget | null) => {
+    const el = target as HTMLElement | null;
+    if (!el) return false;
+    if (typeof ignoreSwipeWithin === "function") return !!ignoreSwipeWithin(el);
+    const selector = typeof ignoreSwipeWithin === "string" ? ignoreSwipeWithin : "[data-swipe-ignore]";
+    return !!el.closest(selector);
+  }, [ignoreSwipeWithin]);
+
+  const handleStart = useCallback((clientX: number, startTarget?: EventTarget | null) => {
+    ignoreGestureRef.current = shouldIgnoreFromTarget(startTarget ?? null);
+    if (ignoreGestureRef.current) return;
     startXRef.current = clientX - currentXRef.current;
     isDraggingRef.current = true;
-  }, []);
+  }, [shouldIgnoreFromTarget]);
 
   const handleMove = useCallback((clientX: number) => {
-    if (!isDraggingRef.current || startXRef.current === null) return;
+    if (ignoreGestureRef.current || !isDraggingRef.current || startXRef.current === null) return;
     const delta = clientX - startXRef.current;
     const next = Math.max(minLeft - 24, Math.min(maxRight + 24, delta));
     currentXRef.current = next;
@@ -47,6 +63,11 @@ export default function SwipeRow({
   }, [minLeft, maxRight]);
 
   const handleEnd = useCallback(() => {
+    if (ignoreGestureRef.current) {
+      // reset ignore flag for next gesture
+      ignoreGestureRef.current = false;
+      return;
+    }
     if (!isDraggingRef.current) return;
     isDraggingRef.current = false;
     // snap logic
@@ -63,11 +84,11 @@ export default function SwipeRow({
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
-    const onTouchStart = (e: TouchEvent) => handleStart(e.touches[0].clientX);
+    const onTouchStart = (e: TouchEvent) => handleStart(e.touches[0].clientX, e.target);
     const onTouchMove = (e: TouchEvent) => handleMove(e.touches[0].clientX);
     const onTouchEnd = () => handleEnd();
 
-    const onMouseDown = (e: MouseEvent) => handleStart(e.clientX);
+    const onMouseDown = (e: MouseEvent) => handleStart(e.clientX, e.target);
     const onMouseMove = (e: MouseEvent) => handleMove(e.clientX);
     const onMouseUp = () => handleEnd();
 
