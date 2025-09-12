@@ -88,8 +88,10 @@ export default function SimplifiedNutritionForm({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [isPaymentPickerOpen, setPaymentPickerOpen] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState('');
 
   const [createNutritionRecord] = useCreateNutritionRecordMutation();
   const [createDraftRecord] = useCreateDraftRecordMutation();
@@ -145,11 +147,12 @@ export default function SimplifiedNutritionForm({
     if (!files || files.length === 0) return;
 
     const filesArray = Array.from(files);
-    setIsAnalyzing(true);
+    setLoadingMessage('上傳中，請稍候...');
+    setIsUploading(true);
     setAnalysisError(null);
     
     const newPreviews = filesArray.map(file => URL.createObjectURL(file));
-    setUploadedPhotos(newPreviews);
+    setUploadedPhotos(prev => [...prev, ...newPreviews]);
 
     let tempRecordId = currentRecordId;
 
@@ -165,41 +168,63 @@ export default function SimplifiedNutritionForm({
         setCurrentRecordId(tempRecordId);
       }
 
+      const existingPhotoUrls = form.getValues('photoUrls') || [];
+      const shouldAnalyze = existingPhotoUrls.length === 0;
+
       const compressedFiles = await Promise.all(filesArray.map(file => 
         compressImage(file, { maxWidth: 1600, maxHeight: 1600, quality: 0.8, mimeType: 'image/webp' })
       ));
       
       const uploadResult = await uploadPhotos({ id: tempRecordId, files: compressedFiles }).unwrap();
-      const { photoUrls } = uploadResult;
+      const { photoUrls: newPhotoUrls } = uploadResult;
       
-      setUploadedPhotos(photoUrls);
-      setValue('photoUrls', photoUrls);
+      const updatedPhotoUrls = [...existingPhotoUrls, ...newPhotoUrls];
 
-      const analysisResult = await analyzePhoto({ photoUrl: photoUrls[0] }).unwrap();
+      setUploadedPhotos(updatedPhotoUrls);
+      setValue('photoUrls', updatedPhotoUrls);
 
-      if (analysisResult.foods && analysisResult.foods.length > 0) {
-        const foodsToUpdate = analysisResult.foods.map(food => ({
-          foodName: food.foodName || '',
-          description: food.description || '',
-          calories: food.calories || 0,
-          protein: food.protein || 0,
-          carbohydrates: food.carbohydrates || 0,
-          fat: food.fat || 0,
-          fiber: food.fiber || 0,
-          sugar: food.sugar || 0,
-          sodium: food.sodium || 0,
-        }));
-        
-        replace(foodsToUpdate);
-        await updateNutritionRecord({ id: tempRecordId, data: { foods: foodsToUpdate } }).unwrap();
-      } else {
-        setAnalysisError('AI 未能從圖片中辨識出任何食物。');
+      if (shouldAnalyze && newPhotoUrls.length > 0) {
+        setLoadingMessage('AI 分析中，請稍候...');
+        setIsAnalyzing(true);
+        const analysisResult = await analyzePhoto({ photoUrl: newPhotoUrls[0] }).unwrap();
+
+        if (analysisResult.foods && analysisResult.foods.length > 0) {
+          const newlyFoundFoods = analysisResult.foods.map(food => ({
+            foodName: food.foodName || '',
+            description: food.description || '',
+            calories: food.calories || 0,
+            protein: food.protein || 0,
+            carbohydrates: food.carbohydrates || 0,
+            fat: food.fat || 0,
+            fiber: food.fiber || 0,
+            sugar: food.sugar || 0,
+            sodium: food.sodium || 0,
+          }));
+          
+          append(newlyFoundFoods);
+          const allFoods = form.getValues('foods');
+          const normalizedFoods: FoodItem[] = (allFoods || []).map((f: z.infer<typeof simplifiedNutritionSchema>['foods'][number]) => ({
+            foodName: f.foodName,
+            description: f.description ?? '',
+            calories: f.calories ?? 0,
+            protein: f.protein ?? 0,
+            carbohydrates: f.carbohydrates ?? 0,
+            fat: f.fat ?? 0,
+            fiber: f.fiber ?? 0,
+            sugar: f.sugar ?? 0,
+            sodium: f.sodium ?? 0,
+          }));
+          await updateNutritionRecord({ id: tempRecordId, data: { foods: normalizedFoods } }).unwrap();
+        } else {
+          setAnalysisError('AI 未能從圖片中辨識出任何食物。');
+        }
       }
 
     } catch (error) {
       console.error('圖片處理與分析流程失敗:', error);
       setAnalysisError('處理失敗，請稍後再試或手動輸入。');
     } finally {
+      setIsUploading(false);
       setIsAnalyzing(false);
     }
   };
@@ -263,9 +288,18 @@ export default function SimplifiedNutritionForm({
     if (fields.length > 1) remove(index);
   };
 
+  const handleRemovePhoto = (index: number) => {
+    const newPhotos = uploadedPhotos.filter((_, i) => i !== index);
+    setUploadedPhotos(newPhotos);
+    setValue('photoUrls', newPhotos);
+  };
+
   return (
     <div className="bg-white rounded-2xl shadow-xl p-6 max-w-2xl mx-auto">
-      <LoadingModal open={isAnalyzing} message="AI 分析中，請稍候..." />
+      <LoadingModal 
+        open={isUploading || isAnalyzing} 
+        message={loadingMessage} 
+      />
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-2xl font-bold text-gray-900">簡易飲食記錄</h2>
         {onCancel && (
@@ -374,6 +408,13 @@ export default function SimplifiedNutritionForm({
                   {uploadedPhotos.map((photo, index) => (
                     <div key={index} className="flex-shrink-0 w-32 h-32 relative group">
                       <Image src={photo} alt={`預覽 ${index + 1}`} layout="fill" className="object-cover rounded-lg" />
+                      <button
+                        type="button"
+                        onClick={() => handleRemovePhoto(index)}
+                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1 opacity-75 group-hover:opacity-100 transition-opacity"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                      </button>
                     </div>
                   ))}
                 </div>
@@ -389,7 +430,7 @@ export default function SimplifiedNutritionForm({
 
             <button type="button" onClick={() => fileInputRef.current?.click()} className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-green-700 bg-green-100 hover:bg-green-200">
               <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-4l-2-2H7a2 2 0 00-2 2v1z" /></svg>
-              {uploadedPhotos.length > 0 ? '更換照片' : '選擇照片'}
+              {uploadedPhotos.length > 0 ? '新增照片' : '選擇照片'}
             </button>
 
           </div>
