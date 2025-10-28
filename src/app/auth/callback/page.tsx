@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, Suspense } from 'react';
+import { useEffect, useMemo, Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useDispatch } from 'react-redux';
 import { setToken } from '@/lib/authSlice';
+import { API_BASE_URL } from '@/lib/api';
 
 function AuthCallbackContent() {
   const router = useRouter();
@@ -12,8 +13,13 @@ function AuthCallbackContent() {
 
   const isNew = useMemo(() => params.get('new') === '1', [params]);
   const token = useMemo(() => params.get('token'), [params]);
+  const needsLink = useMemo(() => params.get('link') === '1', [params]);
+  const linkToken = useMemo(() => params.get('linkToken') || '', [params]);
+  const email = useMemo(() => params.get('email') || '', [params]);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
+    if (needsLink) return; // 交由下方 UI 處理
     if (!token) {
       router.replace('/login');
       return;
@@ -26,7 +32,49 @@ function AuthCallbackContent() {
       console.error('Error setting token:', error);
       router.replace('/login');
     }
-  }, [token, isNew, router, dispatch]);
+  }, [token, isNew, router, dispatch, needsLink]);
+
+  if (needsLink) {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-4">
+        <div className="max-w-md w-full border rounded-xl p-6 bg-white shadow-sm">
+          <h1 className="text-lg font-semibold text-gray-900 mb-2">發現相同信箱</h1>
+          <p className="text-sm text-gray-700 mb-4">我們在系統中找到使用 {email || '此'} 信箱的帳號。是否確認這是你的帳號並綁定 Google 登入？</p>
+          <div className="flex items-center gap-2 justify-end">
+            <button
+              className="px-3 py-2 text-sm rounded-md bg-gray-100 hover:bg-gray-200"
+              onClick={() => router.replace('/login')}
+            >取消</button>
+            <button
+              disabled={submitting}
+              className={`px-3 py-2 text-sm rounded-md ${submitting ? 'bg-gray-300 text-gray-500' : 'bg-emerald-600 text-white hover:bg-emerald-700'}`}
+              onClick={async () => {
+                try {
+                  setSubmitting(true);
+                  const res = await fetch(`${API_BASE_URL}/auth/link-oauth`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ linkToken }),
+                  });
+                  const json = await res.json();
+                  const at = json?.accessToken;
+                  if (!at) throw new Error('Link failed');
+                  localStorage.setItem('token', at);
+                  dispatch(setToken(at));
+                  router.replace('/dashboard');
+                } catch (e) {
+                  console.error(e);
+                  router.replace('/login');
+                } finally {
+                  setSubmitting(false);
+                }
+              }}
+            >{submitting ? '綁定中…' : '確認綁定'}</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center">

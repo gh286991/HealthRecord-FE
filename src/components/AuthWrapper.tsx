@@ -10,7 +10,7 @@ export default function AuthWrapper({ children }: { children: React.ReactNode })
 
   useEffect(() => {
     const isLoggedIn = tokenUtils.isLoggedIn();
-    const publicPaths = ['/', '/login', '/register'];
+    const publicPaths = ['/', '/login', '/register', '/auth/callback'];
 
     if (!isLoggedIn && !publicPaths.includes(pathname)) {
       router.push('/login');
