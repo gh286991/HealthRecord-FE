@@ -181,6 +181,10 @@ export const workoutApi = createApi({
       query: (date) => ({ url: '/workout-records/daily-summary', params: { date } }),
       providesTags: [{ type: 'WorkoutSummary', id: 'LIST' }],
     }),
+    getWorkoutRange: builder.query<WorkoutRecord[], { startDate?: string; endDate?: string; range?: '7d' | '30d'; type?: WorkoutType } | void>({
+      query: (params) => ({ url: '/workout-records/range', params: params as Record<string, unknown> | undefined }),
+      providesTags: [{ type: 'WorkoutSummary', id: 'LIST' }],
+    }),
     getWorkoutById: builder.query<WorkoutRecord, string>({
       query: (id) => `/workout-records/${id}`,
       providesTags: (result, _e, id) => [{ type: 'WorkoutRecord', id }],
@@ -262,6 +266,8 @@ export const workoutApi = createApi({
 export const {
   useGetMarkedDatesQuery,
   useGetWorkoutListQuery,
+  useGetWorkoutDailySummaryQuery,
+  useGetWorkoutRangeQuery,
   useCreateWorkoutMutation,
   useUpdateWorkoutMutation,
   useDeleteWorkoutMutation,
@@ -271,5 +277,3 @@ export const {
   useUpdateUserExerciseMutation,
   useDeleteUserExerciseMutation,
 } = workoutApi;
-
-

@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
-import { useEffect, useMemo, useState, Suspense } from 'react';
+import { useEffect, useMemo, useState, useRef, Suspense } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '@/lib/store';
 import { logout as logoutAction } from '@/lib/authSlice';
@@ -13,6 +13,8 @@ function NavigationContent() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [open, setOpen] = useState(false);
   const [animIn, setAnimIn] = useState(false);
+  const [fitnessOpen, setFitnessOpen] = useState(false);
+  const closeTimer = useRef<number | null>(null);
   const token = useSelector((s: RootState) => s.auth.token);
   const dispatch = useDispatch();
   const router = useRouter();
@@ -69,7 +71,8 @@ function NavigationContent() {
                 <Link href="/workout" onClick={handleNavItemClick} {...item(2, 'text-gray-700 hover:text-gray-900 hover:bg-gray-50')}>健身紀錄</Link>
                 <Link href="/schedule" onClick={handleNavItemClick} {...item(3, 'text-gray-700 hover:text-gray-900 hover:bg-gray-50')}>課表安排</Link>
                 <Link href="/workout/exercises" onClick={handleNavItemClick} {...item(4, 'text-gray-700 hover:text-gray-900 hover:bg-gray-50')}>動作管理</Link>
-                <Link href="/profile" onClick={handleNavItemClick} {...item(5, 'text-gray-700 hover:text-gray-900 hover:bg-gray-50')}>個人資料</Link>
+                <Link href="/analytics/strength" onClick={handleNavItemClick} {...item(5, 'text-gray-700 hover:text-gray-900 hover:bg-gray-50')}>運動圖表</Link>
+                <Link href="/profile" onClick={handleNavItemClick} {...item(6, 'text-gray-700 hover:text-gray-900 hover:bg-gray-50')}>個人資料</Link>
               </div>
               <div className="mt-auto pb-8 px-4">
                 <div className={`${enter}`} style={{ transitionDelay: `${5 * 30}ms` }}>
@@ -93,10 +96,53 @@ function NavigationContent() {
         {isLoggedIn ? (
           <>
             <Link href="/dashboard" onClick={handleNavItemClick} {...item(0, 'text-gray-700 hover:text-gray-900')}>儀表板</Link>
-            <Link href="/nutrition" onClick={handleNavItemClick} {...item(1, 'text-gray-700 hover:text-gray-900')}>飲食紀錄</Link>
-            <Link href="/workout" onClick={handleNavItemClick} {...item(2, 'text-gray-700 hover:text-gray-900')}>健身紀錄</Link>
-            <Link href="/schedule" onClick={handleNavItemClick} {...item(3, 'text-gray-700 hover:text-gray-900')}>課表安排</Link>
-            <Link href="/workout/exercises" onClick={handleNavItemClick} {...item(4, 'text-gray-700 hover:text-gray-900')}>動作管理</Link>
+            <Link href="/nutrition" onClick={handleNavItemClick} {...item(1, 'text-gray-700 hover:text-gray-900')}>飲食</Link>
+            {/* Condensed fitness dropdown for desktop with hover intent + click toggle */}
+            <div
+              className="relative inline-block"
+              onMouseEnter={() => {
+                if (closeTimer.current) window.clearTimeout(closeTimer.current);
+                setFitnessOpen(true);
+              }}
+              onMouseLeave={() => {
+                if (closeTimer.current) window.clearTimeout(closeTimer.current);
+                // small delay prevents flicker when moving cursor
+                closeTimer.current = window.setTimeout(() => setFitnessOpen(false), 150);
+              }}
+            >
+              <button
+                className={`px-3 py-2 rounded-md text-sm font-medium inline-flex items-center ${fitnessOpen ? 'text-gray-900' : 'text-gray-700 hover:text-gray-900'}`}
+                aria-haspopup="menu"
+                aria-expanded={fitnessOpen}
+                onClick={() => setFitnessOpen((v) => !v)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    setFitnessOpen((v) => !v);
+                  }
+                  if (e.key === 'Escape') setFitnessOpen(false);
+                }}
+              >
+                運動
+                <svg className="ml-1 w-4 h-4 opacity-70" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                  <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clipRule="evenodd" />
+                </svg>
+              </button>
+              {fitnessOpen && (
+                <div
+                  className="absolute left-0 mt-2 w-44 rounded-lg border border-gray-200 bg-white shadow-lg overflow-hidden z-50"
+                  role="menu"
+                  onMouseEnter={() => {
+                    if (closeTimer.current) window.clearTimeout(closeTimer.current);
+                  }}
+                >
+                  <Link href="/workout" onClick={handleNavItemClick} className="block px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">健身紀錄</Link>
+                  <Link href="/schedule" onClick={handleNavItemClick} className="block px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">課表安排</Link>
+                  <Link href="/workout/exercises" onClick={handleNavItemClick} className="block px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">動作管理</Link>
+                  <Link href="/analytics/strength" onClick={handleNavItemClick} className="block px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">運動圖表</Link>
+                </div>
+              )}
+            </div>
             <Link href="/profile" onClick={handleNavItemClick} {...item(5, 'text-gray-700 hover:text-gray-900')}>個人資料</Link>
             <div className="px-3 py-2 sm:px-0 sm:py-0">
               <Button onClick={handleLogout} className="!px-4 !py-2 !text-sm w-full sm:w-auto" variant="secondary">登出</Button>
@@ -132,6 +178,8 @@ function NavigationContent() {
         return '動作管理';
       case '/profile':
         return '個人資料';
+      case '/analytics/strength':
+        return '運動圖表';
       case '/login':
         return '登入';
       case '/register':
