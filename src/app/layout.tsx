@@ -7,7 +7,6 @@ import Providers from "@/components/Providers";
 import AuthWrapper from "@/components/AuthWrapper"; // Import AuthWrapper
 import { NextIntlClientProvider } from 'next-intl';
 import PreventBounce from "@/components/PreventBounce";
-import AppFooter from "@/components/AppFooter";
 import MobileTabBar from "@/components/MobileTabBar";
 
 const geistSans = Geist({
@@ -92,14 +91,15 @@ export default async function RootLayout({
   return (
     <html lang="zh-TW">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen flex flex-col`}
       >
         <NextIntlClientProvider locale="zh" messages={messages}>
           <Providers>
             <Navigation />
-            <AuthWrapper>{children}</AuthWrapper>
+            <main className="flex-1">
+              <AuthWrapper>{children}</AuthWrapper>
+            </main>
             <MobileTabBar />
-            <AppFooter />
             <PWAInstallPrompt />
             <PreventBounce />
           </Providers>

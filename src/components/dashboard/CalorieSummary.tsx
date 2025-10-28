@@ -44,10 +44,11 @@ const CalorieSummary: React.FC<CalorieSummaryProps> = ({ tdee, consumed, bmr, ac
         <p className="text-sm text-gray-600 mb-6">
           請先到「個人資料」頁面填寫身高、體重、生日、性別與活動等級，以便我們為您計算每日建議攝取熱量。
         </p>
-        <Link href="/profile">
-          <a className="inline-block bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition-colors">
-            前往個人資料
-          </a>
+        <Link
+          href="/profile"
+          className="inline-block bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition-colors"
+        >
+          前往個人資料
         </Link>
       </Card>
     );

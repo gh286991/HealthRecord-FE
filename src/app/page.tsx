@@ -18,6 +18,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import ScrollReveal from "@/components/ScrollReveal";
+import Footer from "@/components/Footer";
 
 export default function Home() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -336,6 +337,11 @@ export default function Home() {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Site footer: desktop only */}
+      <div className="hidden sm:block">
+        <Footer />
       </div>
     </div>
   );

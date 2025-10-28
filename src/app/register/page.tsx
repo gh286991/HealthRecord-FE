@@ -4,9 +4,12 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { RegisterData } from '@/lib/api';
-import { useRegisterMutation } from '@/lib/authApi';
+import { useRegisterMutation, useLoginMutation } from '@/lib/authApi';
 import Button from '@/components/Button';
 import Toast from '@/components/Toast';
+import { API_BASE_URL } from '@/lib/api';
+import { useDispatch } from 'react-redux';
+import { setToken, setUser } from '@/lib/authSlice';
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState<RegisterData>({
@@ -21,6 +24,8 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
   const [registerUser] = useRegisterMutation();
+  const [login] = useLoginMutation();
+  const dispatch = useDispatch();
   const [toastOpen, setToastOpen] = useState(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
   const [toastVariant, setToastVariant] = useState<'default'|'success'|'error'>('default');
@@ -51,10 +56,14 @@ export default function RegisterPage() {
       if (formData.birthday) submitData.birthday = formData.birthday;
 
       await registerUser(submitData).unwrap();
+      // 註冊成功後自動登入，並導向個人資料頁
+      const loginResp = await login({ username: submitData.username, password: submitData.password }).unwrap();
+      dispatch(setToken(loginResp.accessToken));
+      if (loginResp.user) dispatch(setUser(loginResp.user));
       setToastVariant('success');
-      setToastMsg('註冊成功！請前往登入');
+      setToastMsg('註冊成功，已自動登入');
       setToastOpen(true);
-      setTimeout(() => router.push('/login'), 600);
+      setTimeout(() => router.push('/profile'), 400);
     } catch (err: unknown) {
       const errorMessage = err instanceof Error && 'response' in err && 
         typeof err.response === 'object' && err.response !== null &&
@@ -216,6 +225,31 @@ export default function RegisterPage() {
               </Button>
             </div>
           </form>
+
+          <div className="mt-6">
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-300" />
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-2 bg-white text-gray-500">或使用第三方註冊</span>
+              </div>
+            </div>
+            <div className="mt-4">
+              <a
+                href={`${API_BASE_URL}/auth/google`}
+                className="w-full inline-flex justify-center items-center gap-2 border border-gray-300 rounded-md py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="20" height="20">
+                  <path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12 c0-6.627,5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C32.651,6.053,28.513,4,24,4C12.955,4,4,12.955,4,24 s8.955,20,20,20s20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"/>
+                  <path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,16.108,18.961,13,24,13c3.059,0,5.842,1.154,7.961,3.039 l5.657-5.657C32.651,6.053,28.513,4,24,4C16.316,4,9.843,8.337,6.306,14.691z"/>
+                  <path fill="#4CAF50" d="M24,44c4.438,0,8.497-1.64,11.634-4.329l-5.374-4.531C28.226,36.459,26.189,37,24,37 c-5.202,0-9.623-3.317-11.287-7.946l-6.5,5.02C9.695,39.556,16.327,44,24,44z"/>
+                  <path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.793,2.238-2.231,4.166-4.097,5.583 c0.001-0.001,0.002-0.001,0.003-0.002l5.374,4.531C34.288,39.205,44,32,44,24C44,22.659,43.862,21.35,43.611,20.083z"/>
+                </svg>
+                使用 Google 註冊
+              </a>
+            </div>
+          </div>
         </div>
       </div>
       <Toast open={toastOpen} message={toastMsg} variant={toastVariant} onClose={() => setToastOpen(false)} />
