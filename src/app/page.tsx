@@ -46,17 +46,17 @@ export default function Home() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 p-5 sm:p-8">
             <div className="max-w-3xl text-white motion-safe:animate-[fade-up_700ms_ease-out_both]">
               <div className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs">
-                <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
+                <span className="inline-block h-1.5 w-1.5 rounded-full bg-yellow-400"></span>
                 AI 自動化分析
               </div>
-              <h1 className="mt-1 sm:mt-3 text-3xl sm:text-4xl font-semibold tracking-tight [animation-delay:60ms]">輕鬆記錄飲食與運動，專注真正的變化</h1>
-              <p className="mt-2 hidden sm:block text-sm sm:text-base text-white/90 [animation-delay:120ms]">簡潔流程、關鍵指標與一致體驗，幫助你穩定地前進。</p>
+              <h1 className="mt-1 sm:mt-3 text-3xl sm:text-4xl font-semibold tracking-tight [animation-delay:60ms]">YoungFit，越練越自在，越練越年輕</h1>
+              <p className="mt-2 hidden sm:block text-sm sm:text-base text-white/90 [animation-delay:120ms]">以健康為本，讓每一次訓練都更專注、更有感。</p>
               <div className="mt-3 flex [animation-delay:180ms]">
                 {isLoggedIn ? (
                   <>
                     <Link
                       href="/dashboard"
-                      className="inline-flex items-center justify-center rounded-lg bg-emerald-600 px-4 py-2.5 text-sm sm:text-base text-white hover:bg-emerald-700 transition-colors"
+                      className="inline-flex items-center justify-center rounded-lg bg-orange-500 px-4 py-2.5 text-sm sm:text-base text-white hover:bg-orange-600 transition-colors"
                     >
                       前往儀表板
                     </Link>
@@ -65,7 +65,7 @@ export default function Home() {
                   <>
                     <Link
                       href="/register"
-                      className="inline-flex items-center justify-center rounded-lg bg-emerald-600 px-4 py-2.5 text-sm sm:text-base text-white hover:bg-emerald-700 transition-colors"
+                      className="inline-flex items-center justify-center rounded-lg bg-orange-500 px-4 py-2.5 text-sm sm:text-base text-white hover:bg-orange-600 transition-colors"
                     >
                       立即開始
                     </Link>
@@ -93,7 +93,7 @@ export default function Home() {
           {/* 飲食紀錄 */}
           <div className="rounded-xl border border-gray-200 bg-white p-5 sm:p-6 shadow-sm">
             <div className="flex items-start gap-4">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-orange-50 text-orange-600">
                 <Utensils className="h-5 w-5" />
               </div>
               <div>
@@ -187,12 +187,12 @@ export default function Home() {
             {/* Step 1 */}
             <div className="rounded-lg border border-gray-200 bg-white p-4">
               <div className="flex items-start gap-3">
-                <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-50 text-emerald-600 font-medium">1</span>
+                <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-orange-50 text-orange-600 font-medium">1</span>
                 <div className="flex-1">
                   <div className="text-sm font-medium text-gray-900">記錄</div>
                   <div className="mt-1 text-xs text-gray-600">拍照上傳或快速輸入飲食/運動，約 10 秒完成。</div>
                   <div className="mt-2">
-                    <Link href="/nutrition" className="inline-flex items-center text-emerald-700 hover:text-emerald-800 text-xs font-medium">
+                    <Link href="/nutrition" className="inline-flex items-center text-orange-700 hover:text-orange-800 text-xs font-medium">
                       前往新增飲食
                       <ArrowRight className="ml-1 h-3.5 w-3.5" />
                     </Link>
@@ -203,12 +203,12 @@ export default function Home() {
             {/* Step 2 */}
             <div className="rounded-lg border border-gray-200 bg-white p-4">
               <div className="flex items-start gap-3">
-                <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-50 text-blue-600 font-medium">2</span>
+                <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-orange-50 text-orange-600 font-medium">2</span>
                 <div className="flex-1">
                   <div className="text-sm font-medium text-gray-900">追蹤</div>
                   <div className="mt-1 text-xs text-gray-600">在儀表板查看熱量、營養與訓練趨勢。</div>
                   <div className="mt-2">
-                    <Link href="/dashboard" className="inline-flex items-center text-blue-700 hover:text-blue-800 text-xs font-medium">
+                    <Link href="/dashboard" className="inline-flex items-center text-orange-700 hover:text-orange-800 text-xs font-medium">
                       打開儀表板
                       <ArrowRight className="ml-1 h-3.5 w-3.5" />
                     </Link>
@@ -219,12 +219,12 @@ export default function Home() {
             {/* Step 3 */}
             <div className="rounded-lg border border-gray-200 bg-white p-4">
               <div className="flex items-start gap-3">
-                <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-purple-50 text-purple-600 font-medium">3</span>
+                <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-orange-50 text-orange-600 font-medium">3</span>
                 <div className="flex-1">
                   <div className="text-sm font-medium text-gray-900">達標</div>
                   <div className="mt-1 text-xs text-gray-600">規劃訓練課表與營養目標，持續優化節奏。</div>
                   <div className="mt-2">
-                    <Link href="/schedule" className="inline-flex items-center text-purple-700 hover:text-purple-800 text-xs font-medium">
+                    <Link href="/schedule" className="inline-flex items-center text-orange-700 hover:text-orange-800 text-xs font-medium">
                       安排訓練課表
                       <ArrowRight className="ml-1 h-3.5 w-3.5" />
                     </Link>
@@ -283,7 +283,7 @@ export default function Home() {
           <div className="mt-8 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4" data-reveal-children>
             <div className="rounded-lg border border-gray-200 bg-white p-4">
               <div className="flex items-center gap-2 text-gray-900">
-                <span className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-emerald-50 text-emerald-600">
+                <span className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-orange-50 text-orange-600">
                   <Target className="h-4 w-4" />
                 </span>
                 <div className="text-sm font-medium">營養目標</div>
@@ -339,10 +339,8 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Site footer: desktop only */}
-      <div className="hidden sm:block">
-        <Footer />
-      </div>
+      {/* Site footer: visible on all viewports */}
+      <Footer />
     </div>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
-import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
-import { API_BASE_URL } from '@/lib/api';
+import { createApi } from '@reduxjs/toolkit/query/react';
+import { jsonBaseQuery } from '@/lib/rtkBase';
 
 // 使用共用的 API_BASE_URL，避免不同檔案 fallback 不一致
 
@@ -122,17 +122,7 @@ export interface DailyWorkoutResponse {
 
 export const workoutApi = createApi({
   reducerPath: 'workoutApi',
-  baseQuery: fetchBaseQuery({
-    baseUrl: API_BASE_URL,
-    prepareHeaders: (headers) => {
-      if (typeof window !== 'undefined') {
-        const token = localStorage.getItem('token');
-        if (token) headers.set('Authorization', `Bearer ${token}`);
-      }
-      headers.set('Content-Type', 'application/json');
-      return headers;
-    },
-  }),
+  baseQuery: jsonBaseQuery,
   tagTypes: ['WorkoutRecord', 'WorkoutSummary', 'Exercises'],
   endpoints: (builder) => ({
     getMarkedDates: builder.query<string[], { year: number; month: number }>(({

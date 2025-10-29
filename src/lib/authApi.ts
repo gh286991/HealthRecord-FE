@@ -1,25 +1,15 @@
 "use client";
 
-import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import { createApi } from '@reduxjs/toolkit/query/react';
 import type { RegisterData, LoginData, UserProfile, UpdateUserData } from '@/lib/api';
 import { BodyRecord } from '@/types/body-record';
-import { API_BASE_URL } from '@/lib/api';
+import { jsonBaseQuery } from '@/lib/rtkBase';
 
 // 使用共用的 API_BASE_URL，避免不同檔案 fallback 不一致
 
 export const authApiRtk = createApi({
   reducerPath: 'authApi',
-  baseQuery: fetchBaseQuery({
-    baseUrl: API_BASE_URL,
-    prepareHeaders: (headers) => {
-      if (typeof window !== 'undefined') {
-        const token = localStorage.getItem('token');
-        if (token) headers.set('Authorization', `Bearer ${token}`);
-      }
-      headers.set('Content-Type', 'application/json');
-      return headers;
-    },
-  }),
+  baseQuery: jsonBaseQuery,
   tagTypes: ['Profile', 'BodyRecords'],
   endpoints: (builder) => ({
     register: builder.mutation<{ message: string }, RegisterData>({
@@ -60,5 +50,4 @@ export const {
   useAddBodyRecordMutation,
   useDeleteBodyRecordMutation,
 } = authApiRtk;
-
 

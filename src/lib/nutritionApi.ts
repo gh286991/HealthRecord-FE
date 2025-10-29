@@ -1,7 +1,7 @@
 "use client";
 
-import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
-import { API_BASE_URL } from '@/lib/api';
+import { createApi } from '@reduxjs/toolkit/query/react';
+import { baseQuery } from '@/lib/rtkBase';
 
 // 飲食記錄相關類型
 export interface FoodItem {
@@ -82,16 +82,7 @@ export interface DailySummary {
 
 export const nutritionApiRtk = createApi({
   reducerPath: 'nutritionApi',
-  baseQuery: fetchBaseQuery({
-    baseUrl: API_BASE_URL,
-    prepareHeaders: (headers) => {
-      if (typeof window !== 'undefined') {
-        const token = localStorage.getItem('token');
-        if (token) headers.set('Authorization', `Bearer ${token}`);
-      }
-      return headers;
-    },
-  }),
+  baseQuery,
   tagTypes: ['NutritionRecord'],
   endpoints: (builder) => ({
     // ... other endpoints

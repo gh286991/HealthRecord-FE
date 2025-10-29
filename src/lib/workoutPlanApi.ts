@@ -1,7 +1,7 @@
 'use client';
 
-import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
-import { API_BASE_URL } from '@/lib/api';
+import { createApi } from '@reduxjs/toolkit/query/react';
+import { jsonBaseQuery } from '@/lib/rtkBase';
 import { WorkoutExercise } from './workoutApi'; // Reuse from workoutApi for consistency
 
 export interface WorkoutPlan {
@@ -18,17 +18,7 @@ export interface WorkoutPlan {
 
 export const workoutPlanApi = createApi({
   reducerPath: 'workoutPlanApi',
-  baseQuery: fetchBaseQuery({
-    baseUrl: API_BASE_URL,
-    prepareHeaders: (headers) => {
-      if (typeof window !== 'undefined') {
-        const token = localStorage.getItem('token');
-        if (token) headers.set('Authorization', `Bearer ${token}`);
-      }
-      headers.set('Content-Type', 'application/json');
-      return headers;
-    },
-  }),
+  baseQuery: jsonBaseQuery,
   tagTypes: ['WorkoutPlan'],
   endpoints: (builder) => ({
     getWorkoutPlans: builder.query<WorkoutPlan[], { date?: string } | void>({ 

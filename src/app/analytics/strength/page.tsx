@@ -9,7 +9,7 @@ import TopExercisesByVolume from '@/components/charts/TopExercisesByVolume';
 import OneRMTrend from '@/components/charts/OneRMTrend';
 import BodyPartDistribution from '@/components/charts/BodyPartDistribution';
 import { useGetWorkoutListQuery, useGetWorkoutRangeQuery, WorkoutType, WorkoutRecord } from '@/lib/workoutApi';
-import { getAIAdvice, suggestAIPlan, type SuggestedPlan } from '@/lib/aiAdviceApi';
+import { useGetAiAdviceMutation, useSuggestAiPlanMutation, type SuggestedPlan } from '@/lib/aiAdviceApi';
 import { useCreateWorkoutPlanMutation, WorkoutPlan } from '@/lib/workoutPlanApi';
 import LoadingModal from '@/components/ios/LoadingModal';
 
@@ -102,10 +102,10 @@ export default function StrengthAnalyticsPage() {
 
 function AIAdvice({ range }: { range: '7d' | '30d' }) {
   const [advice, setAdvice] = useState<string>('');
-  const [loading, setLoading] = useState(false);
-  const [planLoading, setPlanLoading] = useState(false);
   const [previewPlans, setPreviewPlans] = useState<SuggestedPlan[] | null>(null);
   const [createPlan] = useCreateWorkoutPlanMutation();
+  const [getAiAdvice, { isLoading: loadingAdvice }] = useGetAiAdviceMutation();
+  const [suggestAiPlan, { isLoading: loadingPlan }] = useSuggestAiPlanMutation();
   const t = useTranslations();
 
   const tx = (name: string) => {
@@ -122,26 +122,20 @@ function AIAdvice({ range }: { range: '7d' | '30d' }) {
 
   const onAdvice = async () => {
     try {
-      setLoading(true);
       setAdvice('');
-      const text = await getAIAdvice(range);
+      const text = await getAiAdvice({ range }).unwrap();
       setAdvice(text);
     } catch {
       setAdvice('目前無法取得 AI 建議，請稍後再試。');
-    } finally {
-      setLoading(false);
     }
   };
 
   const onSuggestPlan = async () => {
     try {
-      setPlanLoading(true);
-      const plans = await suggestAIPlan(range, advice);
+      const plans = await suggestAiPlan({ range, advice }).unwrap();
       setPreviewPlans(plans);
     } catch {
       setPreviewPlans([]);
-    } finally {
-      setPlanLoading(false);
     }
   };
 
@@ -178,15 +172,15 @@ function AIAdvice({ range }: { range: '7d' | '30d' }) {
         <div className="flex items-center gap-2">
           <button
             onClick={onAdvice}
-            disabled={loading || planLoading}
-            className={`px-3 py-1.5 rounded-md text-sm ${loading || planLoading ? 'bg-gray-200 text-gray-500' : 'bg-gray-900 text-white hover:bg-black'}`}
-          >{loading ? '分析中…' : '取得建議'}</button>
+            disabled={loadingAdvice || loadingPlan}
+            className={`px-3 py-1.5 rounded-md text-sm ${loadingAdvice || loadingPlan ? 'bg-gray-200 text-gray-500' : 'bg-gray-900 text-white hover:bg-black'}`}
+          >{loadingAdvice ? '分析中…' : '取得建議'}</button>
           <button
             onClick={onSuggestPlan}
-            disabled={planLoading || loading || !advice}
+            disabled={loadingPlan || loadingAdvice || !advice}
             title={!advice ? '請先取得 AI 建議' : undefined}
-            className={`px-3 py-1.5 rounded-md text-sm ${planLoading || loading || !advice ? 'bg-gray-200 text-gray-500' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
-          >{planLoading ? '規劃中…' : '建議課表'}</button>
+            className={`px-3 py-1.5 rounded-md text-sm ${loadingPlan || loadingAdvice || !advice ? 'bg-gray-200 text-gray-500' : 'bg-blue-600 text-white hover:bg-blue-700'}`}
+          >{loadingPlan ? '規劃中…' : '建議課表'}</button>
         </div>
       </div>
       {advice ? (
@@ -198,7 +192,7 @@ function AIAdvice({ range }: { range: '7d' | '30d' }) {
       )}
 
       {/* 全畫面 Loading 覆蓋 */}
-      <LoadingModal open={loading || planLoading} message={loading ? 'AI 分析中…' : (planLoading ? '產生建議課表中…' : '處理中…')} />
+      <LoadingModal open={loadingAdvice || loadingPlan} message={loadingAdvice ? 'AI 分析中…' : (loadingPlan ? '產生建議課表中…' : '處理中…')} />
 
       {previewPlans && (
         <div className="mt-4 border rounded-lg p-4 bg-white text-black">

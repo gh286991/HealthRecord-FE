@@ -20,13 +20,13 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "健康管理系統",
-  description: "健康管理系統 - 註冊、登入和個人資料管理",
+  title: "YoungFit",
+  description: "YoungFit｜越練越自在，越練越年輕",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Health Pro",
+    title: "YoungFit",
     startupImage: [
       {
         url: "/icons/icon-192x192.png",
@@ -62,10 +62,10 @@ export const metadata: Metadata = {
     "mobile-web-app-capable": "yes",
     "apple-mobile-web-app-capable": "yes",
     "apple-mobile-web-app-status-bar-style": "default",
-    "apple-mobile-web-app-title": "Health Pro",
+    "apple-mobile-web-app-title": "YoungFit",
     "apple-touch-icon": "/icons/apple-touch-icon.png",
     "msapplication-TileImage": "/icons/icon-144x144.png",
-    "msapplication-TileColor": "#10b981"
+    "msapplication-TileColor": "#FF9A3D"
   }
 };
 

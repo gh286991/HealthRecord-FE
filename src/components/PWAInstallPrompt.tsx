@@ -91,10 +91,10 @@ const PWAInstallPrompt = () => {
     <>
       {/* Android/Desktop 安裝提示 */}
       {deferredPrompt && (
-        <div className="fixed bottom-4 left-4 right-4 bg-emerald-600 text-white p-4 rounded-lg shadow-lg z-50 md:left-auto md:right-4 md:max-w-sm">
+        <div className="fixed bottom-4 left-4 right-4 bg-orange-500 text-white p-4 rounded-lg shadow-lg z-50 md:left-auto md:right-4 md:max-w-sm">
           <div className="flex items-center justify-between">
             <div className="flex-1">
-              <h3 className="font-semibold text-sm">安裝健康管理應用</h3>
+              <h3 className="font-semibold text-sm">安裝 YoungFit</h3>
               <p className="text-xs mt-1 opacity-90">
                 安裝到主屏幕以獲得更好的體驗
               </p>
@@ -108,7 +108,7 @@ const PWAInstallPrompt = () => {
               </button>
               <button
                 onClick={handleInstallClick}
-                className="text-xs px-3 py-1 rounded bg-white text-emerald-600 hover:bg-gray-100"
+                className="text-xs px-3 py-1 rounded bg-white text-orange-600 hover:bg-gray-100"
               >
                 安裝
               </button>
@@ -123,7 +123,7 @@ const PWAInstallPrompt = () => {
           <div className="bg-white w-full p-6 rounded-t-2xl max-h-96">
             <div className="flex justify-between items-start mb-4">
               <h3 className="text-lg font-semibold text-gray-900">
-                安裝健康管理應用
+                安裝 YoungFit
               </h3>
               <button
                 onClick={handleIOSPromptClose}
@@ -178,7 +178,7 @@ const PWAInstallPrompt = () => {
               <div className="mt-6 pt-4 border-t">
                 <button
                   onClick={handleIOSPromptClose}
-                  className="w-full bg-emerald-600 text-white py-3 rounded-lg hover:bg-emerald-700"
+                  className="w-full bg-orange-500 text-white py-3 rounded-lg hover:bg-orange-600"
                 >
                   知道了
                 </button>

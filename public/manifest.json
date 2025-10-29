@@ -1,8 +1,8 @@
 {
-  "name": "Health Pro",
-  "short_name": "HealthPro",
-  "description": "您的健康管理應用程式",
-  "theme_color": "#10b981",
+  "name": "YoungFit",
+  "short_name": "YoungFit",
+  "description": "YoungFit｜越練越自在，越練越年輕",
+  "theme_color": "#FF9A3D",
   "background_color": "#ffffff",
   "display": "standalone",
   "orientation": "portrait",

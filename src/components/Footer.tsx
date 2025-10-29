@@ -24,6 +24,7 @@ export default function Footer() {
               <li><Link href="/login" className="hover:text-gray-900">登入</Link></li>
               <li><Link href="/register" className="hover:text-gray-900">建立帳號</Link></li>
               <li><a href="#how-it-works" className="hover:text-gray-900">如何開始</a></li>
+              <li><Link href="/feedback" className="hover:text-gray-900">意見回饋</Link></li>
               <li><a href="#" className="pointer-events-none text-gray-400" aria-disabled>常見問題（即將推出）</a></li>
             </ul>
           </div>
@@ -48,9 +49,9 @@ export default function Footer() {
         </div>
 
         <div className="mt-10 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="text-sm text-gray-600">© {year} 健康管理系統 · Health Pro</div>
+          <div className="text-sm text-gray-600">© {year} YoungFit · 越練越自在，越練越年輕 </div>
           <div className="flex items-center gap-4 text-gray-600">
-            <a href="mailto:hello@example.com" aria-label="Email" className="hover:text-gray-900"><Mail className="h-5 w-5"/></a>
+            <a href="mailto:service@youngfit.app" aria-label="Email" className="hover:text-gray-900"><Mail className="h-5 w-5"/></a>
             <a href="#" aria-label="Website" className="hover:text-gray-900"><Globe className="h-5 w-5"/></a>
             <a href="#" aria-label="GitHub" className="hover:text-gray-900"><Github className="h-5 w-5"/></a>
             <a href="#" aria-label="Twitter" className="hover:text-gray-900"><Twitter className="h-5 w-5"/></a>
@@ -60,4 +61,3 @@ export default function Footer() {
     </footer>
   );
 }
-

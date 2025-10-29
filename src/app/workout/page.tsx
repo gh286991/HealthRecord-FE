@@ -150,9 +150,7 @@ function WorkoutPageContent() {
     setEditingRecord(null);
     setSelectedWorkoutType(null); // Reset selected type
     setWorkoutTypeSelectorOpen(true); // Open the workout type selector
-    setViewMode('add'); // Keep view mode as add, but the selector will overlay
-    // The router.push will be handled by handleWorkoutTypeSelect after selection
-    try { router.push('/workout?form=add'); } catch { }
+    // 僅在選擇類型後才切換到新增畫面並跳轉 URL
   };
 
   const handleStartPlan = (plan: WorkoutPlan) => {

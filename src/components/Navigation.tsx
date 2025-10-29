@@ -72,7 +72,8 @@ function NavigationContent() {
                 <Link href="/schedule" onClick={handleNavItemClick} {...item(3, 'text-gray-700 hover:text-gray-900 hover:bg-gray-50')}>課表安排</Link>
                 <Link href="/workout/exercises" onClick={handleNavItemClick} {...item(4, 'text-gray-700 hover:text-gray-900 hover:bg-gray-50')}>動作管理</Link>
                 <Link href="/analytics/strength" onClick={handleNavItemClick} {...item(5, 'text-gray-700 hover:text-gray-900 hover:bg-gray-50')}>運動圖表</Link>
-                <Link href="/profile" onClick={handleNavItemClick} {...item(6, 'text-gray-700 hover:text-gray-900 hover:bg-gray-50')}>個人資料</Link>
+                <Link href="/feedback" onClick={handleNavItemClick} {...item(6, 'text-gray-700 hover:text-gray-900 hover:bg-gray-50')}>意見回饋</Link>
+                <Link href="/profile" onClick={handleNavItemClick} {...item(7, 'text-gray-700 hover:text-gray-900 hover:bg-gray-50')}>個人資料</Link>
               </div>
               <div className="mt-auto pb-8 px-4">
                 <div className={`${enter}`} style={{ transitionDelay: `${5 * 30}ms` }}>
@@ -84,7 +85,8 @@ function NavigationContent() {
             <>
               <Link href="/" onClick={handleNavItemClick} {...item(0, 'text-gray-700 hover:text-gray-900 hover:bg-gray-50')}>首頁</Link>
               <Link href="/login" onClick={handleNavItemClick} {...item(1, 'text-gray-700 hover:text-gray-900 hover:bg-gray-50')}>登入</Link>
-              <Link href="/register" onClick={handleNavItemClick} {...item(2, 'bg-blue-600 hover:bg-blue-700 text-white')}>註冊</Link>
+              <Link href="/feedback" onClick={handleNavItemClick} {...item(2, 'text-gray-700 hover:text-gray-900 hover:bg-gray-50')}>意見回饋</Link>
+              <Link href="/register" onClick={handleNavItemClick} {...item(3, 'bg-orange-500 hover:bg-orange-600 text-white')}>註冊</Link>
             </>
           )}
         </>
@@ -97,6 +99,7 @@ function NavigationContent() {
           <>
             <Link href="/dashboard" onClick={handleNavItemClick} {...item(0, 'text-gray-700 hover:text-gray-900')}>儀表板</Link>
             <Link href="/nutrition" onClick={handleNavItemClick} {...item(1, 'text-gray-700 hover:text-gray-900')}>飲食</Link>
+            <Link href="/feedback" onClick={handleNavItemClick} {...item(2, 'text-gray-700 hover:text-gray-900')}>意見回饋</Link>
             {/* Condensed fitness dropdown for desktop with hover intent + click toggle */}
             <div
               className="relative inline-block"
@@ -143,7 +146,7 @@ function NavigationContent() {
                 </div>
               )}
             </div>
-            <Link href="/profile" onClick={handleNavItemClick} {...item(5, 'text-gray-700 hover:text-gray-900')}>個人資料</Link>
+            <Link href="/profile" onClick={handleNavItemClick} {...item(6, 'text-gray-700 hover:text-gray-900')}>個人資料</Link>
             <div className="px-3 py-2 sm:px-0 sm:py-0">
               <Button onClick={handleLogout} className="!px-4 !py-2 !text-sm w-full sm:w-auto" variant="secondary">登出</Button>
             </div>
@@ -152,7 +155,7 @@ function NavigationContent() {
           <>
             <Link href="/" onClick={handleNavItemClick} {...item(0, 'text-gray-700 hover:text-gray-900')}>首頁</Link>
             <Link href="/login" onClick={handleNavItemClick} {...item(1, 'text-gray-700 hover:text-gray-900')}>登入</Link>
-            <Link href="/register" onClick={handleNavItemClick} {...item(2, 'bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md')}>註冊</Link>
+            <Link href="/register" onClick={handleNavItemClick} {...item(2, 'bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-md')}>註冊</Link>
           </>
         )}
       </>
@@ -161,15 +164,17 @@ function NavigationContent() {
 
   // 依目前路徑決定標題（APP 風格）
   const getTitleFromPath = (path: string): string => {
-    if (!path) return '健康管理系統';
+    if (!path) return 'YoungFit';
     const clean = path.split('?')[0];
     switch (clean) {
       case '/':
-        return '健康管理系統';
+        return 'YoungFit';
       case '/dashboard':
         return '儀表板';
       case '/nutrition':
         return '飲食紀錄';
+      case '/feedback':
+        return '意見回饋';
       case '/workout':
         return '健身紀錄';
       case '/schedule':
@@ -185,7 +190,7 @@ function NavigationContent() {
       case '/register':
         return '註冊';
       default:
-        return '健康管理系統';
+        return 'YoungFit';
     }
   };
   const currentTitle = getTitleFromPath(pathname || '/');

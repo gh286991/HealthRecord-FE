@@ -39,7 +39,7 @@ export default function MobileTabBar() {
                 <SafeLink
                   href={href}
                   className={`inline-flex flex-col items-center justify-center gap-0.5 text-[11px] ${
-                    active ? "text-emerald-600" : "text-gray-600 hover:text-gray-900"
+                    active ? "text-orange-600" : "text-gray-600 hover:text-gray-900"
                   }`}
                   aria-current={active ? "page" : undefined}
                 >
