@@ -1,6 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useSelector } from 'react-redux';
+import type { RootState } from '@/lib/store';
+import { getPwaStatus, postPwaEvent } from '@/lib/pwaApi';
 
 interface BeforeInstallPromptEvent extends Event {
   readonly platforms: string[];
@@ -12,11 +15,16 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 const PWAInstallPrompt = () => {
+  const token = useSelector((s: RootState) => s.auth.token);
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showIOSPrompt, setShowIOSPrompt] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
+  const [allowPrompt, setAllowPrompt] = useState(false);
 
   useEffect(() => {
+    // 未登入：不顯示任何 PWA 提示
+    if (!token) return;
+
     // 檢查是否已安裝
     const checkIfInstalled = () => {
       if ('standalone' in window.navigator && window.navigator.standalone) {
@@ -31,6 +39,27 @@ const PWAInstallPrompt = () => {
     };
 
     if (checkIfInstalled()) return;
+
+    // 啟動時詢問伺服器狀態，判斷是否可以顯示提示
+    (async () => {
+      try {
+        const status = await getPwaStatus(token);
+        if (status.installed) {
+          setIsInstalled(true);
+          setAllowPrompt(false);
+          return;
+        }
+        if (status.nextPromptAt) {
+          const next = new Date(status.nextPromptAt).getTime();
+          setAllowPrompt(Date.now() >= next);
+        } else {
+          setAllowPrompt(true);
+        }
+      } catch {
+        // 狀態取得失敗時，不阻擋瀏覽器原有流程，但仍遵循登入限定
+        setAllowPrompt(true);
+      }
+    })();
 
     // 監聽 beforeinstallprompt 事件
     const handleBeforeInstallPrompt = (e: Event) => {
@@ -59,11 +88,22 @@ const PWAInstallPrompt = () => {
     }
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    const handleAppInstalled = async () => {
+      try {
+        if (token) await postPwaEvent(token, 'install');
+      } finally {
+        setIsInstalled(true);
+        setDeferredPrompt(null);
+        setShowIOSPrompt(false);
+      }
+    };
+    window.addEventListener('appinstalled', handleAppInstalled);
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('appinstalled', handleAppInstalled);
     };
-  }, []);
+  }, [token]);
 
   const handleInstallClick = async () => {
     if (!deferredPrompt) return;
@@ -72,20 +112,34 @@ const PWAInstallPrompt = () => {
     const { outcome } = await deferredPrompt.userChoice;
     
     if (outcome === 'accepted') {
-      console.log('用戶接受了安裝提示');
+      // 真正安裝成功由 appinstalled 事件回報
     } else {
-      console.log('用戶拒絕了安裝提示');
+      try { if (token) await postPwaEvent(token, 'dismiss'); } catch {}
     }
     
     setDeferredPrompt(null);
   };
 
-  const handleIOSPromptClose = () => {
+  const handleIOSPromptClose = async () => {
     setShowIOSPrompt(false);
     localStorage.setItem('ios-pwa-prompt-seen', 'true');
+    try { if (token) await postPwaEvent(token, 'dismiss'); } catch {}
   };
 
-  if (isInstalled) return null;
+  const handleLater = async () => {
+    // 立即在前端關閉並禁止本次會話再次顯示
+    setDeferredPrompt(null);
+    setAllowPrompt(false);
+    try {
+      localStorage.setItem('pwa-next-prompt-deferred', String(Date.now()));
+    } catch {}
+    try { if (token) await postPwaEvent(token, 'later'); } catch {}
+  };
+
+  // 未登入或已安裝：不顯示
+  if (!token || isInstalled) return null;
+  // 未達到提示時機：不顯示
+  if (!allowPrompt) return null;
 
   return (
     <>
@@ -101,7 +155,7 @@ const PWAInstallPrompt = () => {
             </div>
             <div className="flex gap-2 ml-4">
               <button
-                onClick={() => setDeferredPrompt(null)}
+                onClick={handleLater}
                 className="text-xs px-3 py-1 rounded border border-white/30 hover:bg-white/10"
               >
                 稍後

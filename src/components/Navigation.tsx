@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState, useRef, Suspense } from 'react';
+import { isProtectedPath } from '@/lib/protectedRoutes';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '@/lib/store';
 import { logout as logoutAction } from '@/lib/authSlice';
@@ -197,6 +198,7 @@ function NavigationContent() {
   const workoutFormMode = searchParams?.get('form');
   const isWorkoutForm = (pathname === '/workout') && (workoutFormMode === 'add' || workoutFormMode === 'edit');
   const isWorkoutPage = pathname === '/workout';
+  const isProtectedPage = useMemo(() => isProtectedPath(pathname), [pathname]);
   const { totalSeconds, isRunning, restSeconds, isRestRunning, formatMMSS } = useWorkoutTimer();
   const displayTime = useMemo(() => formatMMSS(totalSeconds), [formatMMSS, totalSeconds]);
   const displayRestTime = useMemo(() => formatMMSS(restSeconds), [formatMMSS, restSeconds]);
@@ -229,7 +231,17 @@ function NavigationContent() {
                 </svg>
               </button>
             )}
-            <div className="text-xl font-bold text-gray-900">{currentTitle}</div>
+            {isProtectedPage ? (
+              <div className="text-xl font-bold text-gray-900" aria-label={currentTitle}>{currentTitle}</div>
+            ) : (
+              <button
+                className="text-xl font-bold text-gray-900 hover:text-gray-700 transition-colors"
+                onClick={() => router.push('/')}
+                aria-label="返回首頁"
+              >
+                {currentTitle}
+              </button>
+            )}
             {isWorkoutPage && (
               <div className="ml-2 flex items-center gap-1.5">
                 {/* 訓練計時器 */}

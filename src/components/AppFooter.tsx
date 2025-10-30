@@ -1,28 +1,37 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useSelector } from "react-redux";
-import type { RootState } from "@/lib/store";
-import Footer from "@/components/Footer";
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { isProtectedPath } from "@/lib/protectedRoutes";
 
 export default function AppFooter() {
   // 僅在客戶端掛載後再決定是否渲染，避免 SSR 初次渲染誤判造成閃爍
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
-  const token = useSelector((s: RootState) => s.auth.token);
   const pathname = usePathname();
+
   const isHome = pathname === "/";
+  const isFunctionalAppPage = useMemo(() => isProtectedPath(pathname), [pathname]);
 
   if (!mounted) return null;
-  // 登入後：完全隱藏 Footer（App 體驗）
-  if (token) return null;
-  // 僅在首頁顯示 Footer；手機（sm 以下）隱藏避免佔版
-  if (!isHome) return null;
+  // 規則：除了首頁與保護頁，其餘頁面顯示簡易 Footer（不分登入狀態）
+  if (isHome || isFunctionalAppPage) return null;
+
+  const year = new Date().getFullYear();
   return (
-    <div className="hidden sm:block">
-      <Footer />
-    </div>
+    <footer className="mt-12 border-t border-gray-200 bg-white">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="flex items-center justify-between text-sm text-gray-600">
+          <div>© {year} YoungFit</div>
+          <div className="flex items-center gap-4">
+            <Link href="/privacy/latest" className="hover:text-gray-900">隱私權</Link>
+            <Link href="/terms/latest" className="hover:text-gray-900">服務條款</Link>
+            <Link href="/cookies" className="hover:text-gray-900">Cookie</Link>
+          </div>
+        </div>
+      </div>
+    </footer>
   );
 }
