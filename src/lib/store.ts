@@ -9,6 +9,7 @@ import authReducer from './authSlice';
 
 import { workoutPlanApi } from './workoutPlanApi';
 import { aiAdviceApi } from './aiAdviceApi';
+import { legalApiRtk } from './legalApi';
 
 export const store = configureStore({
   reducer: {
@@ -18,17 +19,18 @@ export const store = configureStore({
     auth: authReducer,
     [workoutPlanApi.reducerPath]: workoutPlanApi.reducer,
     [aiAdviceApi.reducerPath]: aiAdviceApi.reducer,
+    [legalApiRtk.reducerPath]: legalApiRtk.reducer,
   },
   middleware: (getDefault) => getDefault().concat(
     workoutApi.middleware, 
     authApiRtk.middleware,      
     nutritionApiRtk.middleware, 
     workoutPlanApi.middleware,
-    aiAdviceApi.middleware),
+    aiAdviceApi.middleware,
+    legalApiRtk.middleware),
 });
 
 export type RootState = ReturnType<typeof store.getState>;
 
 
 setupListeners(store.dispatch);
-

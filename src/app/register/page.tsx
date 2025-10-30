@@ -5,12 +5,14 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { RegisterData } from '@/lib/api';
 import { useRegisterMutation, useLoginMutation } from '@/lib/authApi';
+import { useLazyLatestVersionsQuery, useCreateAgreementMutation } from '@/lib/legalApi';
 import Button from '@/components/Button';
 import Toast from '@/components/Toast';
 import TermsModal from '@/components/TermsModal';
 import { API_BASE_URL } from '@/lib/api';
 import { useDispatch } from 'react-redux';
 import { setToken, setUser } from '@/lib/authSlice';
+import { extractErrorMessage } from '@/lib/errorMessage';
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState<RegisterData>({
@@ -26,6 +28,8 @@ export default function RegisterPage() {
   const router = useRouter();
   const [registerUser] = useRegisterMutation();
   const [login] = useLoginMutation();
+  const [triggerLatest] = useLazyLatestVersionsQuery();
+  const [createAgreement] = useCreateAgreementMutation();
   const dispatch = useDispatch();
   const [toastOpen, setToastOpen] = useState(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
@@ -157,18 +161,33 @@ export default function RegisterPage() {
       const loginResp = await login({ username: submitData.username, password: submitData.password }).unwrap();
       dispatch(setToken(loginResp.accessToken));
       if (loginResp.user) dispatch(setUser(loginResp.user));
+      // 紀錄使用者對最新條款/隱私的同意（使用 RTK Query）
       setToastVariant('success');
       setToastMsg('註冊成功，已自動登入');
       setToastOpen(true);
-      setTimeout(() => router.push('/profile'), 400);
+      // 使用 RTK Query 同步寫入，同意紀錄完成後再導頁，避免請求被中止
+      try {
+        const latest = await triggerLatest().unwrap();
+        // 取得 userId：優先用回應的 user.userId；沒有就從 accessToken 解析 sub
+        let userIdFromToken: string | undefined;
+        try {
+          const [, payloadB64] = (loginResp?.accessToken || '').split('.');
+          if (payloadB64) {
+            const json = JSON.parse(atob(payloadB64.replace(/-/g, '+').replace(/_/g, '/')));
+            userIdFromToken = String(json?.sub || json?.userId || json?._id || '');
+          }
+        } catch {}
+        const uid = loginResp?.user?.userId || userIdFromToken;
+        if (uid) {
+          await Promise.allSettled([
+            createAgreement({ userId: uid, doc: 'terms', version: latest?.terms }).unwrap(),
+            createAgreement({ userId: uid, doc: 'privacy', version: latest?.privacy }).unwrap(),
+          ]);
+        }
+      } catch {}
+      setTimeout(() => router.push('/profile'), 200);
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error && 'response' in err && 
-        typeof err.response === 'object' && err.response !== null &&
-        'data' in err.response && typeof err.response.data === 'object' &&
-        err.response.data !== null && 'message' in err.response.data &&
-        typeof err.response.data.message === 'string'
-        ? err.response.data.message
-        : '註冊失敗，請稍後再試';
+      const errorMessage = extractErrorMessage(err, '註冊失敗，請稍後再試');
       setToastVariant('error');
       setToastMsg(errorMessage);
       setToastOpen(true);
