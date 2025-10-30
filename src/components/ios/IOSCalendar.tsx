@@ -1,5 +1,5 @@
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, type ReactElement } from 'react';
 
 interface IOSCalendarProps {
   selectedDate: string; // YYYY-MM-DD
@@ -55,7 +55,7 @@ const IOSCalendar = ({ selectedDate, markedDates = [], pendingDates = [], onChan
   };
 
   // 建立固定 6 週 (42 格) 的日期格，確保高度不隨月份改變
-  const days = [] as JSX.Element[];
+  const days: ReactElement[] = [];
   const TOTAL_CELLS = 42;
   for (let cell = 0; cell < TOTAL_CELLS; cell++) {
     const dayNum = cell - startingDayOfWeek + 1;
