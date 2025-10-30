@@ -10,9 +10,21 @@ export default function AuthWrapper({ children }: { children: React.ReactNode })
 
   useEffect(() => {
     const isLoggedIn = tokenUtils.isLoggedIn();
-    const publicPaths = ['/', '/login', '/register', '/auth/callback', '/feedback'];
+    const publicPrefixes = [
+      '/',
+      '/login',
+      '/register',
+      '/auth/callback',
+      '/feedback',
+      // 法務頁面：所有版本與 latest 皆開放
+      '/privacy',
+      '/terms',
+      '/cookies',
+      '/about',
+    ];
+    const isPublic = publicPrefixes.some((p) => pathname === p || pathname.startsWith(p + '/'));
 
-    if (!isLoggedIn && !publicPaths.includes(pathname)) {
+    if (!isLoggedIn && !isPublic) {
       router.push('/login');
     }
   }, [pathname, router]);

@@ -32,18 +32,18 @@ export default function Footer() {
           <div>
             <div className="text-sm font-semibold text-gray-900">公司</div>
             <ul className="mt-3 space-y-2 text-sm text-gray-600">
-              <li><a href="#" className="hover:text-gray-900">關於我們</a></li>
-              <li><a href="#" className="hover:text-gray-900">更新日誌</a></li>
-              <li><a href="#" className="hover:text-gray-900">聯絡我們</a></li>
+              <li><Link href="/about" className="hover:text-gray-900">關於我們</Link></li>
+              <li><a href="#" className="pointer-events-none text-gray-400" aria-disabled>更新日誌（即將推出）</a></li>
+              <li><Link href="/feedback" className="hover:text-gray-900">聯絡我們</Link></li>
             </ul>
           </div>
 
           <div>
             <div className="text-sm font-semibold text-gray-900">法務</div>
             <ul className="mt-3 space-y-2 text-sm text-gray-600">
-              <li><a href="#" className="hover:text-gray-900">隱私權政策</a></li>
-              <li><a href="#" className="hover:text-gray-900">服務條款</a></li>
-              <li><a href="#" className="hover:text-gray-900">Cookie 政策</a></li>
+              <li><Link href="/privacy/latest" className="hover:text-gray-900">隱私權政策</Link></li>
+              <li><Link href="/terms/latest" className="hover:text-gray-900">服務條款</Link></li>
+              <li><Link href="/cookies" className="hover:text-gray-900">Cookie 政策</Link></li>
             </ul>
           </div>
         </div>

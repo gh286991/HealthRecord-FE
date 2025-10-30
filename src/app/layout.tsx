@@ -8,6 +8,7 @@ import AuthWrapper from "@/components/AuthWrapper"; // Import AuthWrapper
 import { NextIntlClientProvider } from 'next-intl';
 import PreventBounce from "@/components/PreventBounce";
 import MobileTabBar from "@/components/MobileTabBar";
+import CookieBanner from "@/components/CookieBanner";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -102,6 +103,7 @@ export default async function RootLayout({
             <MobileTabBar />
             <PWAInstallPrompt />
             <PreventBounce />
+            <CookieBanner />
           </Providers>
         </NextIntlClientProvider>
       </body>

@@ -66,7 +66,8 @@ export default function ImprovedNutritionList({ selectedDate, onDateChange, onAd
   } = useGetNutritionRecordsQuery({ date: selectedDate });
 
   const { 
-    data: markedDates = [] 
+    data: markedDates = [],
+    isFetching: isFetchingMarked
   } = useGetMarkedDatesQuery(currentMonth);
 
   const [deleteNutritionRecord] = useDeleteNutritionRecordMutation();
@@ -75,10 +76,12 @@ export default function ImprovedNutritionList({ selectedDate, onDateChange, onAd
   useEffect(() => {
     const newYear = new Date(selectedDate).getFullYear();
     const newMonth = new Date(selectedDate).getMonth() + 1;
-    if (newYear !== currentMonth.year || newMonth !== currentMonth.month) {
-      setCurrentMonth({ year: newYear, month: newMonth });
-    }
-  }, [selectedDate, currentMonth]);
+    setCurrentMonth(prev => (
+      newYear !== prev.year || newMonth !== prev.month
+        ? { year: newYear, month: newMonth }
+        : prev
+    ));
+  }, [selectedDate]);
 
   const handleDeleteConfirmation = (recordId: string) => {
     setRecordToDelete(recordId);
@@ -471,6 +474,10 @@ export default function ImprovedNutritionList({ selectedDate, onDateChange, onAd
                 onDateChange(d);
                 setIsCalendarOpen(false);
               }}
+              onMonthChange={(year, month) => setCurrentMonth({ year, month })}
+              displayYear={currentMonth.year}
+              displayMonth={currentMonth.month}
+              loading={isFetchingMarked}
             />
           </div>
         </div>

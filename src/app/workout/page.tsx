@@ -83,8 +83,8 @@ function WorkoutPageContent() {
     month: new Date(selectedDate).getMonth() + 1,
   });
 
-  const { data: markedDatesData } = useGetMarkedDatesQuery(currentMonth);
-  const { data: plannedDates } = useGetPlannedDatesQuery({ year: currentMonth.year, month: currentMonth.month, status: 'pending' });
+  const { data: markedDatesData, isFetching: isFetchingMarked } = useGetMarkedDatesQuery(currentMonth);
+  const { data: plannedDates, isFetching: isFetchingPlanned } = useGetPlannedDatesQuery({ year: currentMonth.year, month: currentMonth.month, status: 'pending' });
 
   useEffect(() => {
     if (markedDatesData) {
@@ -92,13 +92,16 @@ function WorkoutPageContent() {
     }
   }, [markedDatesData]);
 
+  // 僅在 selectedDate 改變時同步 currentMonth，避免切換月份被回跳
   useEffect(() => {
     const newYear = new Date(selectedDate).getFullYear();
     const newMonth = new Date(selectedDate).getMonth() + 1;
-    if (newYear !== currentMonth.year || newMonth !== currentMonth.month) {
-      setCurrentMonth({ year: newYear, month: newMonth });
-    }
-  }, [selectedDate, currentMonth.year, currentMonth.month]);
+    setCurrentMonth(prev => (
+      (newYear !== prev.year || newMonth !== prev.month)
+        ? { year: newYear, month: newMonth }
+        : prev
+    ));
+  }, [selectedDate]);
 
   const [summaryData, setSummaryData] = useState<null | {
     date: string;
@@ -378,6 +381,9 @@ function WorkoutPageContent() {
                     markedDates={markedDates}
                     pendingDates={plannedDates || []}
                     onMonthChange={(year, month) => setCurrentMonth({ year, month })}
+                    displayYear={currentMonth.year}
+                    displayMonth={currentMonth.month}
+                    loading={isFetchingMarked || isFetchingPlanned}
                   />
                 </div>
                 {listData?.dailyTotals && (
