@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { LoginData } from '@/lib/api';
 import { useLoginMutation } from '@/lib/authApi';
+import { useCreateAgreementMutation, useLazyLatestVersionsQuery } from '@/lib/legalApi';
 import { useDispatch } from 'react-redux';
 import { setToken, setUser } from '@/lib/authSlice';
 import Button from '@/components/Button';
@@ -20,6 +21,8 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const router = useRouter();
   const [login] = useLoginMutation();
+  const [triggerLatest] = useLazyLatestVersionsQuery();
+  const [createAgreement] = useCreateAgreementMutation();
   const dispatch = useDispatch();
   const [toastOpen, setToastOpen] = useState(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
@@ -45,6 +48,26 @@ export default function LoginPage() {
       const response = await login(formData).unwrap();
       dispatch(setToken(response.accessToken));
       if (response.user) dispatch(setUser(response.user));
+      // 若已在未登入狀態接受 Cookie，登入後補記錄 userId 的 cookies 同意
+      try {
+        const accepted = localStorage.getItem('cookieConsent') === 'accepted';
+        if (accepted) {
+          let userIdFromToken: string | undefined;
+          try {
+            const [, payloadB64] = (response?.accessToken || '').split('.');
+            if (payloadB64) {
+              const json = JSON.parse(atob(payloadB64.replace(/-/g, '+').replace(/_/g, '/')));
+              userIdFromToken = String(json?.sub || json?.userId || json?._id || '');
+            }
+          } catch {}
+          const uid = response?.user?.userId || userIdFromToken;
+          if (uid) {
+            const latest = await triggerLatest().unwrap().catch(() => undefined);
+            const version = latest?.cookies;
+            await createAgreement({ userId: uid, doc: 'cookies', ...(version ? { version } : {}) }).unwrap();
+          }
+        }
+      } catch {}
       setToastVariant('success');
       setToastMsg('登入成功');
       setToastOpen(true);

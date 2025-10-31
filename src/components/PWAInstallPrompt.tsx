@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import type { RootState } from '@/lib/store';
 import { getPwaStatus, postPwaEvent } from '@/lib/pwaApi';
+import { isCookieAccepted, getItem as getConsentItem, setItem as setConsentItem } from '@/lib/consent';
 
 interface BeforeInstallPromptEvent extends Event {
   readonly platforms: string[];
@@ -22,8 +23,8 @@ const PWAInstallPrompt = () => {
   const [allowPrompt, setAllowPrompt] = useState(false);
 
   useEffect(() => {
-    // 未登入：不顯示任何 PWA 提示
-    if (!token) return;
+    // 未登入或未同意 Cookie：不顯示任何 PWA 提示（屬非必要功能）
+    if (!token || !isCookieAccepted()) return;
 
     // 檢查是否已安裝
     const checkIfInstalled = () => {
@@ -81,7 +82,7 @@ const PWAInstallPrompt = () => {
 
     // 如果是iOS且不是standalone模式，顯示iOS特定的安裝提示
     if (isIOS() && !isStandalone()) {
-      const hasSeenPrompt = localStorage.getItem('ios-pwa-prompt-seen');
+      const hasSeenPrompt = getConsentItem('ios-pwa-prompt-seen');
       if (!hasSeenPrompt) {
         setShowIOSPrompt(true);
       }
@@ -122,7 +123,7 @@ const PWAInstallPrompt = () => {
 
   const handleIOSPromptClose = async () => {
     setShowIOSPrompt(false);
-    localStorage.setItem('ios-pwa-prompt-seen', 'true');
+    setConsentItem('ios-pwa-prompt-seen', 'true');
     try { if (token) await postPwaEvent(token, 'dismiss'); } catch {}
   };
 
@@ -130,9 +131,7 @@ const PWAInstallPrompt = () => {
     // 立即在前端關閉並禁止本次會話再次顯示
     setDeferredPrompt(null);
     setAllowPrompt(false);
-    try {
-      localStorage.setItem('pwa-next-prompt-deferred', String(Date.now()));
-    } catch {}
+    try { setConsentItem('pwa-next-prompt-deferred', String(Date.now())); } catch {}
     try { if (token) await postPwaEvent(token, 'later'); } catch {}
   };
 

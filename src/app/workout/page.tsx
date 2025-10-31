@@ -8,6 +8,7 @@ import IOSCalendar from '@/components/ios/IOSCalendar';
 import IOSDualWheelPicker from '@/components/ios/IOSDualWheelPicker';
 import IOSNumericKeypad from '@/components/ios/IOSNumericKeypad';
 import { tokenUtils } from '@/lib/api';
+import { getItem as consentGetItem, setItem as consentSetItem, removeItem as consentRemoveItem } from '@/lib/consent';
 import { WorkoutSet, WorkoutType, CardioData, BodyPart, WorkoutRecord, WorkoutExercise, useCreateWorkoutMutation, useGetWorkoutListQuery, useUpdateWorkoutMutation, useGetBodyPartsQuery, useGetCommonExercisesQuery, useDeleteWorkoutMutation, useGetMarkedDatesQuery } from '@/lib/workoutApi';
 import { useGetWorkoutPlansQuery, useGetPlannedDatesQuery, WorkoutPlan } from '@/lib/workoutPlanApi';
 import Button from '@/components/Button';
@@ -785,7 +786,7 @@ function WorkoutForm({ draftKey, initialData, onCancel, onSubmit, planName }: {
   // 載入草稿
   useEffect(() => {
     try {
-      const raw = typeof window !== 'undefined' ? window.localStorage.getItem(draftKey) : null;
+      const raw = typeof window !== 'undefined' ? consentGetItem(draftKey) : null;
       if (!raw) return;
       const draft = JSON.parse(raw) as { date?: string; exercises?: WorkoutExercise[]; notes?: string; sessionMs?: number };
       if (draft.date) setDate(draft.date);
@@ -812,7 +813,7 @@ function WorkoutForm({ draftKey, initialData, onCancel, onSubmit, planName }: {
     const id = window.setTimeout(() => {
       try {
         const payload = JSON.stringify({ date, exercises, notes, sessionMs: trainWatch.totalSeconds * 1000 });
-        window.localStorage.setItem(draftKey, payload);
+        consentSetItem(draftKey, payload);
       } catch { }
     }, 1000) as unknown as number;
     return () => window.clearTimeout(id);
@@ -1265,7 +1266,7 @@ function WorkoutForm({ draftKey, initialData, onCancel, onSubmit, planName }: {
               return;
             }
             onSubmit({ date, exercises, notes, workoutDurationSeconds: trainWatch.totalSeconds });
-            try { window.localStorage.removeItem(draftKey); } catch { }
+            try { consentRemoveItem(draftKey); } catch { }
           }}
           className="flex-1 py-3 px-4 bg-gradient-to-r from-green-500 to-blue-600 text-white font-medium rounded-lg hover:from-green-600 hover:to-blue-700 transition-all duration-200 active:scale-95"
         >
@@ -1325,7 +1326,7 @@ function WorkoutForm({ draftKey, initialData, onCancel, onSubmit, planName }: {
           }
           onSubmit({ date, exercises, notes, workoutDurationSeconds: trainWatch.totalSeconds, totalRestSeconds: totalRest });
         } catch { }
-        try { window.localStorage.removeItem(draftKey); } catch { }
+        try { consentRemoveItem(draftKey); } catch { }
       }}
     />
 

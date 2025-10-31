@@ -13,7 +13,7 @@ export default async function TermsVersionPage({ params }: { params: Promise<{ v
 
   // 舊版 → 從後端取回凍結內容（contentMd）+ 顯示系統帶的版本與日期
   try {
-    const resp = await fetch(`${API_BASE_URL}/legal/doc/terms/${version}`, { cache: 'no-store' });
+    const resp = await fetch(`${API_BASE_URL}/legal/doc/terms/${version}`, { next: { revalidate: 60 * 60 * 24 * 365 } });
     if (!resp.ok) return notFound();
     const data = await resp.json();
     const md = data?.contentMd as string | undefined;

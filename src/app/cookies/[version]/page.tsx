@@ -1,19 +1,15 @@
 import { notFound } from 'next/navigation';
-import PrivacyPage from '../page';
+import CookiesPage from '../page';
 import MarkdownArticle from '@/components/legal/MarkdownArticle';
 
-export default async function PrivacyVersionPage({ params }: { params: Promise<{ version: string }> }) {
+export default async function CookiesVersionPage({ params }: { params: Promise<{ version: string }> }) {
   const { version } = await params;
   const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://devhealthjapi.zeabur.app';
 
-  // /privacy/latest → 直接顯示最新頁
-  if (version === 'latest') {
-    return <PrivacyPage />;
-  }
+  if (version === 'latest') return <CookiesPage />;
 
-  // 舊版 → 從後端取回凍結內容（contentMd 或 contentHtml）+ 顯示版本與日期
   try {
-    const resp = await fetch(`${API_BASE_URL}/legal/doc/privacy/${version}`, { next: { revalidate: 60 * 60 * 24 * 365 } });
+    const resp = await fetch(`${API_BASE_URL}/legal/doc/cookies/${version}`, { next: { revalidate: 60 * 60 * 24 * 365 } });
     if (!resp.ok) return notFound();
     const data = await resp.json();
     const md = data?.contentMd as string | undefined;
@@ -26,7 +22,7 @@ export default async function PrivacyVersionPage({ params }: { params: Promise<{
     return (
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
         <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900">隱私權政策（{version}）</h1>
+          <h1 className="text-3xl font-bold text-gray-900">Cookie 政策（{version}）</h1>
           <p className="mt-2 text-sm text-gray-600">最後更新日期：{formattedDate ?? '—'}</p>
         </div>
         <MarkdownArticle content={md} html={html} suppressTopHeading />

@@ -5,11 +5,14 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useDispatch } from 'react-redux';
 import { setToken } from '@/lib/authSlice';
 import { API_BASE_URL } from '@/lib/api';
+import { useCreateAgreementMutation, useLazyLatestVersionsQuery } from '@/lib/legalApi';
 
 function AuthCallbackContent() {
   const router = useRouter();
   const params = useSearchParams();
   const dispatch = useDispatch();
+  const [triggerLatest] = useLazyLatestVersionsQuery();
+  const [createAgreement] = useCreateAgreementMutation();
 
   const isNew = useMemo(() => params.get('new') === '1', [params]);
   const token = useMemo(() => params.get('token'), [params]);
@@ -27,12 +30,34 @@ function AuthCallbackContent() {
     try {
       localStorage.setItem('token', token);
       dispatch(setToken(token));
+      // 若已在未登入狀態接受 Cookie，登入後補記錄 userId 的 cookies 同意
+      (async () => {
+        try {
+          const accepted = localStorage.getItem('cookieConsent') === 'accepted';
+          if (accepted) {
+            let userIdFromToken: string | undefined;
+            try {
+              const [, payloadB64] = (token || '').split('.');
+              if (payloadB64) {
+                const json = JSON.parse(atob(payloadB64.replace(/-/g, '+').replace(/_/g, '/')));
+                userIdFromToken = String(json?.sub || json?.userId || json?._id || '');
+              }
+            } catch {}
+            const uid = userIdFromToken;
+            if (uid) {
+              const latest = await triggerLatest().unwrap().catch(() => undefined);
+              const version = latest?.cookies;
+              await createAgreement({ userId: uid, doc: 'cookies', ...(version ? { version } : {}) }).unwrap();
+            }
+          }
+        } catch {}
+      })();
       router.replace(isNew ? '/profile' : '/dashboard');
     } catch (error: unknown) {
       console.error('Error setting token:', error);
       router.replace('/login');
     }
-  }, [token, isNew, router, dispatch, needsLink]);
+  }, [token, isNew, router, dispatch, needsLink, triggerLatest, createAgreement]);
 
   if (needsLink) {
     return (

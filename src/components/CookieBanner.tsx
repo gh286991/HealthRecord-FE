@@ -3,21 +3,62 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { X } from 'lucide-react';
+import { useSelector } from 'react-redux';
+import type { RootState } from '@/lib/store';
+import { useCreateAgreementMutation, useLazyLatestVersionsQuery } from '@/lib/legalApi';
+import { tokenUtils } from '@/lib/api';
 
 export default function CookieBanner() {
   const [isVisible, setIsVisible] = useState(false);
+  const user = useSelector((s: RootState) => s.auth.user);
+  const [triggerLatest] = useLazyLatestVersionsQuery();
+  const [createAgreement] = useCreateAgreementMutation();
 
   useEffect(() => {
     // 檢查用戶是否已經做出選擇
     const consent = localStorage.getItem('cookieConsent');
-    if (!consent) {
-      setIsVisible(true);
-    }
+    if (!consent) setIsVisible(true);
   }, []);
 
-  const handleAccept = () => {
+  const recordCookieConsent = async () => {
+    // 準備 userId 或 visitorId
+    let userId = user?.userId;
+    if (tokenUtils.isLoggedIn() && !userId) {
+      try {
+        const token = localStorage.getItem('token') || '';
+        const [, payloadB64] = token.split('.');
+        if (payloadB64) {
+          const json = JSON.parse(atob(payloadB64.replace(/-/g, '+').replace(/_/g, '/')));
+          userId = String(json?.sub || json?.userId || json?._id || '');
+        }
+      } catch {}
+    }
+    let visitorId: string | undefined = undefined;
+    if (!userId) {
+      visitorId = localStorage.getItem('visitorId') || '';
+      if (!visitorId) {
+        // 產生簡單 UUIDv4（無外部依賴）
+        visitorId = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+          const r = (crypto.getRandomValues(new Uint8Array(1))[0] & 0xf) >> 0;
+          const v = c === 'x' ? r : (r & 0x3) | 0x8;
+          return v.toString(16);
+        });
+        localStorage.setItem('visitorId', visitorId);
+      }
+    }
+    if (!userId && !visitorId) return;
+    try {
+      const latest = await triggerLatest().unwrap().catch(() => undefined);
+      const version = latest?.cookies;
+      await createAgreement({ userId, visitorId, doc: 'cookies', ...(version ? { version } : {}) }).unwrap();
+    } catch {}
+  };
+
+  const handleAccept = async () => {
     localStorage.setItem('cookieConsent', 'accepted');
     localStorage.setItem('cookieConsentDate', new Date().toISOString());
+    // 非阻塞地記錄
+    recordCookieConsent();
     setIsVisible(false);
   };
 
@@ -69,4 +110,3 @@ export default function CookieBanner() {
     </div>
   );
 }
-

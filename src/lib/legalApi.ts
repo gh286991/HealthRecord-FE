@@ -4,14 +4,17 @@ import { createApi } from '@reduxjs/toolkit/query/react';
 import { jsonBaseQuery } from '@/lib/rtkBase';
 
 export type LegalLatestVersions = {
-  terms: string;
-  privacy: string;
+  terms?: string;
+  privacy?: string;
+  cookies?: string;
   termsEffectiveDate?: string;
   privacyEffectiveDate?: string;
+  cookiesEffectiveDate?: string;
 };
 
 export type CreateAgreementBody = {
-  userId: string;
+  userId?: string;
+  visitorId?: string;
   doc: 'terms' | 'privacy' | 'cookies';
   version?: string;
 };
@@ -34,4 +37,3 @@ export const {
   useLazyLatestVersionsQuery,
   useCreateAgreementMutation,
 } = legalApiRtk;
-

@@ -1,20 +1,28 @@
 import Link from "next/link";
 import MarkdownArticle from "@/components/legal/MarkdownArticle";
 
+export const revalidate = 3600; // 1 hour ISR for latest page
+
 export default async function TermsPage() {
+  // Incremental Static Regeneration for the latest Terms page
+  // Revalidates via tag when /api/revalidate/legal is called
+  // or naturally after the set interval below.
+  // Note: set at file level so child fetches can inherit when not overridden.
+  
   const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://devhealthjapi.zeabur.app';
   let latestVersion: string | null = null;
   let effectiveDate: string | null = null;
   let md: string | null = null;
   let heading: string | null = null;
   try {
-    const metaResp = await fetch(`${API_BASE_URL}/legal/latest-versions`, { cache: 'no-store' });
+    const metaResp = await fetch(`${API_BASE_URL}/legal/latest-versions`, { next: { revalidate: 3600, tags: ['legal-latest'] } });
     if (metaResp.ok) {
       const meta = await metaResp.json();
       latestVersion = meta?.terms ?? null;
       effectiveDate = meta?.termsEffectiveDate ?? null;
       if (latestVersion) {
-        const docResp = await fetch(`${API_BASE_URL}/legal/doc/terms/${latestVersion}`, { cache: 'no-store' });
+        // Frozen document version: can be cached for a long time
+        const docResp = await fetch(`${API_BASE_URL}/legal/doc/terms/${latestVersion}`, { next: { revalidate: 60 * 60 * 24 * 365 } });
         if (docResp.ok) {
           const data = await docResp.json();
           md = data?.contentMd ?? null;
