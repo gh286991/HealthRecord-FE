@@ -32,7 +32,6 @@ export const metadata: Metadata = {
   keywords: ['漾飛特', 'YoungFit', '健身', '營養', '飲食記錄', '運動', '健康記錄', 'PWA'],
   alternates: { canonical: '/' },
   robots: { index: true, follow: true },
-  themeColor: '#FF9A3D',
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
@@ -100,6 +99,7 @@ export const viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
+  themeColor: '#FF9A3D',
 };
 
 // 靜態載入中文訊息
