@@ -1,0 +1,13 @@
+# robots.txt for 漾飛特 YoungFit Frontend
+# Learn more: https://developers.google.com/search/docs/crawling-indexing/robots/intro
+
+User-agent: *
+Allow: /
+
+# Optional: Uncomment and adjust if you need to hide areas from crawlers
+# Disallow: /api/
+# Disallow: /dashboard
+# Disallow: /analytics
+
+# If you add a sitemap later, set NEXT_PUBLIC_SITE_URL and add the line below
+# Sitemap: https://example.com/sitemap.xml

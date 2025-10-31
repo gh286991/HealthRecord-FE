@@ -10,6 +10,7 @@ import PreventBounce from "@/components/PreventBounce";
 import MobileTabBar from "@/components/MobileTabBar";
 import CookieBanner from "@/components/CookieBanner";
 import AppFooter from "@/components/AppFooter";
+import { BRAND_NAME, TAGLINE, SITE_URL } from "@/config/brand";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -22,13 +23,21 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "YoungFit",
-  description: "YoungFit｜越練越自在，越練越年輕",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: BRAND_NAME,
+    template: `%s | ${BRAND_NAME}`,
+  },
+  description: `${BRAND_NAME}｜${TAGLINE}`,
+  keywords: ['漾飛特', 'YoungFit', '健身', '營養', '飲食記錄', '運動', '健康記錄', 'PWA'],
+  alternates: { canonical: '/' },
+  robots: { index: true, follow: true },
+  themeColor: '#FF9A3D',
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "YoungFit",
+    title: BRAND_NAME,
     startupImage: [
       {
         url: "/icons/icon-192x192.png",
@@ -60,11 +69,26 @@ export const metadata: Metadata = {
       { url: "/icons/icon-192x192.png", sizes: "192x192", type: "image/png" }
     ]
   },
+  openGraph: {
+    type: 'website',
+    url: SITE_URL,
+    title: BRAND_NAME,
+    siteName: BRAND_NAME,
+    description: `${BRAND_NAME}｜${TAGLINE}`,
+    images: [{ url: '/icons/icon-512x512.png', width: 512, height: 512 }],
+    locale: 'zh_TW',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: BRAND_NAME,
+    description: `${BRAND_NAME}｜${TAGLINE}`,
+    images: ['/icons/icon-512x512.png'],
+  },
   other: {
     "mobile-web-app-capable": "yes",
     "apple-mobile-web-app-capable": "yes",
     "apple-mobile-web-app-status-bar-style": "default",
-    "apple-mobile-web-app-title": "YoungFit",
+    "apple-mobile-web-app-title": BRAND_NAME,
     "apple-touch-icon": "/icons/apple-touch-icon.png",
     "msapplication-TileImage": "/icons/icon-144x144.png",
     "msapplication-TileColor": "#FF9A3D"

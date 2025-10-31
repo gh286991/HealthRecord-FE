@@ -165,11 +165,11 @@ function NavigationContent() {
 
   // 依目前路徑決定標題（APP 風格）
   const getTitleFromPath = (path: string): string => {
-    if (!path) return 'YoungFit';
+    if (!path) return BRAND_NAME;
     const clean = path.split('?')[0];
     switch (clean) {
       case '/':
-        return 'YoungFit';
+        return BRAND_NAME;
       case '/dashboard':
         return '儀表板';
       case '/nutrition':
@@ -191,7 +191,7 @@ function NavigationContent() {
       case '/register':
         return '註冊';
       default:
-        return 'YoungFit';
+        return BRAND_NAME;
     }
   };
   const currentTitle = getTitleFromPath(pathname || '/');
@@ -329,3 +329,4 @@ export default function Navigation() {
     </Suspense>
   );
 }
+import { BRAND_NAME } from "@/config/brand";

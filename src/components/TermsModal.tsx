@@ -131,7 +131,7 @@ export default function TermsModal({ open, onClose, onAccept }: TermsModalProps)
               <section className="mb-6">
                 <h3 className="text-xl font-semibold text-gray-900 mb-2">1. 接受條款</h3>
                 <p className="mb-4">
-                  歡迎使用 YoungFit（以下簡稱「本服務」）。本服務是由個人開發者提供的健康記錄管理系統。
+                  歡迎使用 {BRAND_NAME}（以下簡稱「本服務」）。本服務是由個人開發者提供的健康記錄管理系統。
                   當您註冊帳號、使用本服務或進行付費訂閱時，即表示您已閱讀、理解並同意接受本服務條款的所有內容。
                 </p>
               </section>
@@ -139,7 +139,7 @@ export default function TermsModal({ open, onClose, onAccept }: TermsModalProps)
               <section className="mb-6">
                 <h3 className="text-xl font-semibold text-gray-900 mb-2">2. 服務說明</h3>
                 <p className="mb-4">
-                  YoungFit 提供個人健康記錄管理功能，包括飲食、健身、身體指標記錄與分析。
+                  {BRAND_NAME} 提供個人健康記錄管理功能，包括飲食、健身、身體指標記錄與分析。
                   本服務目前主要服務台灣地區用戶。
                 </p>
               </section>
@@ -227,7 +227,7 @@ export default function TermsModal({ open, onClose, onAccept }: TermsModalProps)
                   <li>刪除權：要求刪除資料</li>
                   <li>撤回同意權：隨時撤回對資料處理的同意</li>
                 </ul>
-                <p>如需行使上述權利，請透過 service@youngfit.app 聯絡我們。</p>
+                <p>如需行使上述權利，請透過 {SUPPORT_EMAIL} 聯絡我們。</p>
               </section>
 
                 <div className="text-center py-4 text-sm text-gray-500 border-t border-gray-100 mt-4 pt-4">
@@ -294,3 +294,4 @@ export default function TermsModal({ open, onClose, onAccept }: TermsModalProps)
     </div>
   );
 }
+import { BRAND_NAME, SUPPORT_EMAIL } from "@/config/brand";

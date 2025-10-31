@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Mail, Github, Globe, Twitter } from "lucide-react";
+import { BRAND_NAME, TAGLINE, SUPPORT_EMAIL } from "@/config/brand";
 
 export default function Footer() {
   const year = new Date().getFullYear();
@@ -49,9 +50,9 @@ export default function Footer() {
         </div>
 
         <div className="mt-10 flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="text-sm text-gray-600">© {year} YoungFit · 越練越自在，越練越年輕 </div>
+          <div className="text-sm text-gray-600">© {year} {BRAND_NAME} · {TAGLINE} </div>
           <div className="flex items-center gap-4 text-gray-600">
-            <a href="mailto:service@youngfit.app" aria-label="Email" className="hover:text-gray-900"><Mail className="h-5 w-5"/></a>
+            <a href={`mailto:${SUPPORT_EMAIL}`} aria-label="Email" className="hover:text-gray-900"><Mail className="h-5 w-5"/></a>
             <a href="#" aria-label="Website" className="hover:text-gray-900"><Globe className="h-5 w-5"/></a>
             <a href="#" aria-label="GitHub" className="hover:text-gray-900"><Github className="h-5 w-5"/></a>
             <a href="#" aria-label="Twitter" className="hover:text-gray-900"><Twitter className="h-5 w-5"/></a>

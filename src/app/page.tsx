@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import Script from "next/script";
 import { tokenUtils } from "@/lib/api";
 import {
   Utensils,
@@ -29,13 +30,30 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* JSON-LD structured data for WebSite */}
+      <Script id="ld-website" type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'WebSite',
+            name: BRAND_NAME,
+            url: SITE_URL,
+            inLanguage: 'zh-TW',
+            potentialAction: {
+              '@type': 'SearchAction',
+              target: `${SITE_URL}/search?q={search_term_string}`,
+              'query-input': 'required name=search_term_string'
+            }
+          })
+        }}
+      />
       {/* Scroll reveal activator */}
       <ScrollReveal />
       {/* Banner (full-bleed) */}
       <div className="relative h-64 sm:h-80 lg:h-[420px] w-screen left-1/2 right-1/2 -ml-[50vw] -mr-[50vw]">
         <Image
-          src="https://images.unsplash.com/photo-1512621776951-a57141f2eefd?q=80&auto=format&fit=crop&w=1600&h=900"
-          alt="新鮮食材與健康飲食的擺盤"
+          src="https://images.unsplash.com/photo-1517836357463-d25dfeac3438?q=80&auto=format&fit=crop&w=1600&h=900"
+          alt="健身訓練與運動氛圍的形象圖"
           fill
           priority
           sizes="100vw"
@@ -49,7 +67,7 @@ export default function Home() {
                 <span className="inline-block h-1.5 w-1.5 rounded-full bg-yellow-400"></span>
                 AI 自動化分析
               </div>
-              <h1 className="mt-1 sm:mt-3 text-3xl sm:text-4xl font-semibold tracking-tight [animation-delay:60ms]">YoungFit，越練越自在，越練越年輕</h1>
+              <h1 className="mt-1 sm:mt-3 text-3xl sm:text-4xl font-semibold tracking-tight [animation-delay:60ms]">{BRAND_NAME}，{TAGLINE}</h1>
               <p className="mt-2 hidden sm:block text-sm sm:text-base text-white/90 [animation-delay:120ms]">以健康為本，讓每一次訓練都更專注、更有感。</p>
               <div className="mt-3 flex [animation-delay:180ms]">
                 {isLoggedIn ? (
@@ -344,3 +362,4 @@ export default function Home() {
     </div>
   );
 }
+import { BRAND_NAME, TAGLINE, SITE_URL } from "@/config/brand";

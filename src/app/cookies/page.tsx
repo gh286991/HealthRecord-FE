@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SUPPORT_EMAIL } from "@/config/brand";
 
 export default function CookiesPage() {
   return (
@@ -155,7 +156,9 @@ export default function CookiesPage() {
           <h2 className="text-2xl font-semibold text-gray-900 mt-8 mb-4">10. 聯絡我們</h2>
           <p>如對本 Cookie 政策有任何疑問，請透過以下方式聯絡我們：</p>
           <ul className="list-none pl-0 space-y-2">
-            <li>電子郵件：<a href="mailto:service@youngfit.app" className="text-orange-600 hover:text-orange-700">service@youngfit.app</a></li>
+            <li>電子郵件：
+              <a href={`mailto:${SUPPORT_EMAIL}`} className="text-orange-600 hover:text-orange-700">{SUPPORT_EMAIL}</a>
+            </li>
             <li>意見回饋頁面：<Link href="/feedback" className="text-orange-600 hover:text-orange-700">/feedback</Link></li>
           </ul>
         </section>
@@ -163,4 +166,3 @@ export default function CookiesPage() {
     </div>
   );
 }
-

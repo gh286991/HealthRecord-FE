@@ -1,3 +1,5 @@
+import { BRAND_NAME, SUPPORT_EMAIL } from "@/config/brand";
+
 export default async function PrivacyPage() {
   const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://devhealthjapi.zeabur.app';
   let latestVersion: string | null = null;
@@ -34,7 +36,7 @@ export default async function PrivacyPage() {
         <section>
           <h2 className="text-2xl font-semibold text-gray-900 mt-8 mb-4">1. 簡介</h2>
           <p>
-            YoungFit（以下簡稱「本服務」）是由個人開發者提供的健康記錄管理系統。我們非常重視您的隱私權，本隱私權政策說明我們如何收集、使用、儲存和保護您的個人資料。
+            {BRAND_NAME}（以下簡稱「本服務」）是由個人開發者提供的健康記錄管理系統。我們非常重視您的隱私權，本隱私權政策說明我們如何收集、使用、儲存和保護您的個人資料。
           </p>
           <p>
             使用本服務即表示您同意本隱私權政策的內容。如果您不同意本政策，請勿使用本服務。
@@ -140,7 +142,7 @@ export default async function PrivacyPage() {
             <li><strong>資料攜帶權：</strong>您可以要求以可攜格式匯出您的資料</li>
           </ul>
           <p className="mt-4">
-            如需行使上述權利，請透過 <a href="mailto:service@youngfit.app" className="text-orange-600 hover:text-orange-700">service@youngfit.app</a> 聯絡我們。
+            如需行使上述權利，請透過 <a href={`mailto:${SUPPORT_EMAIL}`} className="text-orange-600 hover:text-orange-700">{SUPPORT_EMAIL}</a> 聯絡我們。
           </p>
         </section>
 
@@ -182,7 +184,7 @@ export default async function PrivacyPage() {
           <h2 className="text-2xl font-semibold text-gray-900 mt-8 mb-4">11. 聯絡我們</h2>
           <p>如對本隱私權政策有任何疑問或意見，請透過以下方式聯絡我們：</p>
           <ul className="list-none pl-0 space-y-2">
-            <li>電子郵件：<a href="mailto:service@youngfit.app" className="text-orange-600 hover:text-orange-700">service@youngfit.app</a></li>
+            <li>電子郵件：<a href={`mailto:${SUPPORT_EMAIL}`} className="text-orange-600 hover:text-orange-700">{SUPPORT_EMAIL}</a></li>
             <li>意見回饋頁面：<a href="/feedback" className="text-orange-600 hover:text-orange-700">/feedback</a></li>
           </ul>
         </section>

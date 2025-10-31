@@ -24,7 +24,7 @@ export default function AppFooter() {
     <footer className="mt-12 border-t border-gray-200 bg-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="flex items-center justify-between text-sm text-gray-600">
-          <div>© {year} YoungFit</div>
+          <div>© {year} {BRAND_NAME}</div>
           <div className="flex items-center gap-4">
             <Link href="/privacy/latest" className="hover:text-gray-900">隱私權</Link>
             <Link href="/terms/latest" className="hover:text-gray-900">服務條款</Link>
@@ -35,3 +35,4 @@ export default function AppFooter() {
     </footer>
   );
 }
+import { BRAND_NAME } from "@/config/brand";

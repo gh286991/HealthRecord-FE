@@ -1,18 +1,19 @@
 import Link from "next/link";
+import { BRAND_NAME, TAGLINE, SUPPORT_EMAIL } from "@/config/brand";
 
 export default function AboutPage() {
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900">關於我們</h1>
-        <p className="mt-2 text-sm text-gray-600">YoungFit - 越練越自在，越練越年輕</p>
+        <p className="mt-2 text-sm text-gray-600">{BRAND_NAME} - {TAGLINE}</p>
       </div>
 
       <div className="prose prose-sm max-w-none space-y-6 text-gray-700">
         <section>
           <h2 className="text-2xl font-semibold text-gray-900 mt-8 mb-4">我們的使命</h2>
           <p>
-            YoungFit 致力於提供一個簡單、直觀且有效的健康記錄管理平台，
+            {BRAND_NAME} 致力於提供一個簡單、直觀且有效的健康記錄管理平台，
             幫助您追蹤飲食、運動和健康數據，建立更好的生活習慣。
           </p>
           <p>
@@ -23,7 +24,7 @@ export default function AboutPage() {
 
         <section>
           <h2 className="text-2xl font-semibold text-gray-900 mt-8 mb-4">我們的服務</h2>
-          <p>YoungFit 提供以下核心功能：</p>
+          <p>{BRAND_NAME} 提供以下核心功能：</p>
           <ul className="list-disc pl-6 space-y-2">
             <li><strong>飲食記錄：</strong>詳細記錄每餐的營養成分，追蹤每日攝取量</li>
             <li><strong>健身記錄：</strong>記錄運動類型和強度，追蹤訓練進度</li>
@@ -37,7 +38,7 @@ export default function AboutPage() {
         <section>
           <h2 className="text-2xl font-semibold text-gray-900 mt-8 mb-4">開發背景</h2>
           <p>
-            YoungFit 是由個人開發者基於對健康管理的熱忱而開發的專案。
+            {BRAND_NAME} 是由個人開發者基於對健康管理的熱忱而開發的專案。
             我們使用現代化的技術棧，包括 Next.js、NestJS、MongoDB 等，
             確保服務的穩定性和可擴展性。
           </p>
@@ -64,7 +65,7 @@ export default function AboutPage() {
               ⚠️ 醫療免責聲明
             </p>
             <p className="text-red-700 text-sm">
-              YoungFit 僅提供健康記錄管理工具，不提供醫療診斷、治療建議或醫療諮詢。
+              {BRAND_NAME} 僅提供健康記錄管理工具，不提供醫療診斷、治療建議或醫療諮詢。
               本服務中的任何資訊、數據分析或建議都不應取代專業醫療建議。
               在做出任何健康相關決定前，請務必諮詢合格的醫療專業人員。
             </p>
@@ -77,8 +78,8 @@ export default function AboutPage() {
           <ul className="list-none pl-0 space-y-3 mt-4">
             <li>
               <strong className="text-gray-900">電子郵件：</strong>
-              <a href="mailto:service@youngfit.app" className="text-orange-600 hover:text-orange-700 ml-2">
-                service@youngfit.app
+              <a href={`mailto:${SUPPORT_EMAIL}`} className="text-orange-600 hover:text-orange-700 ml-2">
+                {SUPPORT_EMAIL}
               </a>
             </li>
             <li>
@@ -116,7 +117,7 @@ export default function AboutPage() {
 
         <section className="mt-8 pt-8 border-t border-gray-200">
           <p className="text-center text-sm text-gray-500">
-            © {new Date().getFullYear()} YoungFit · 越練越自在，越練越年輕
+            © {new Date().getFullYear()} {BRAND_NAME} · {TAGLINE}
           </p>
         </section>
       </div>

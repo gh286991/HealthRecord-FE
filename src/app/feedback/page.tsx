@@ -1,19 +1,20 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
+import { BRAND_NAME, SUPPORT_EMAIL } from "@/config/brand";
 
 export default function FeedbackPage() {
   const [email, setEmail] = useState("");
-  const [subject, setSubject] = useState("YoungFit 產品意見回饋");
+  const [subject, setSubject] = useState(`${BRAND_NAME} 產品意見回饋`);
   const [message, setMessage] = useState("");
 
   const mailtoHref = useMemo(() => {
-    const to = "service@youngfit.app"; // 依用戶提供信箱
+    const to = SUPPORT_EMAIL; // 依用戶提供信箱
     const parts = [] as string[];
     if (message) parts.push(message);
     if (email) parts.push(`\n\n回覆聯絡信箱：${email}`);
     const body = encodeURIComponent(parts.join("\n"));
-    const sub = encodeURIComponent(subject || "YoungFit 產品意見回饋");
+    const sub = encodeURIComponent(subject || `${BRAND_NAME} 產品意見回饋`);
     return `mailto:${to}?subject=${sub}&body=${body}`;
   }, [email, subject, message]);
 
@@ -26,11 +27,11 @@ export default function FeedbackPage() {
   return (
     <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
       <div className="mb-6">
-        <div className="inline-flex items-center gap-2 rounded-full bg-orange-50 text-orange-700 px-3 py-1 text-xs">YoungFit 客服</div>
+        <div className="inline-flex items-center gap-2 rounded-full bg-orange-50 text-orange-700 px-3 py-1 text-xs">{BRAND_NAME} 客服</div>
         <h1 className="mt-3 text-2xl font-semibold text-gray-900">意見回饋</h1>
         <p className="mt-2 text-sm text-gray-600">有問題或產品建議，隨時來信，我們很在意你的使用體驗。</p>
         <div className="mt-2 text-sm">
-          <a href="mailto:service@youngfit.app" className="text-orange-700 hover:text-orange-800">service@youngfit.app</a>
+          <a href={`mailto:${SUPPORT_EMAIL}`} className="text-orange-700 hover:text-orange-800">{SUPPORT_EMAIL}</a>
         </div>
       </div>
 
@@ -87,7 +88,7 @@ export default function FeedbackPage() {
       </form>
 
       <div className="mt-6 text-xs text-gray-500">
-        你的信件將寄到：service@youngfit.app。我們會盡快回覆，謝謝！
+        你的信件將寄到：{SUPPORT_EMAIL}。我們會盡快回覆，謝謝！
       </div>
     </div>
   );
