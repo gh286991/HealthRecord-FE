@@ -1,15 +1,14 @@
-"use client";
+export const dynamic = 'force-dynamic';
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
-import Image from "next/image";
-import Script from "next/script";
-import { tokenUtils } from "@/lib/api";
+import Image from 'next/image';
+import Link from 'next/link';
+import ScrollReveal from '@/components/ScrollReveal';
+import Footer from '@/components/Footer';
+import HomeCta from '@/components/home/HomeCta';
 import {
   Utensils,
   Dumbbell,
   Activity as ActivityIcon,
-  ChevronDown,
   ArrowRight,
   Target,
   Calendar,
@@ -17,21 +16,16 @@ import {
   Timer,
   Plus,
   Sparkles,
-} from "lucide-react";
-import ScrollReveal from "@/components/ScrollReveal";
-import Footer from "@/components/Footer";
+  ChevronDown,
+} from 'lucide-react';
+import { BRAND_NAME, TAGLINE, SITE_URL } from '@/config/brand';
 
 export default function Home() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-
-  useEffect(() => {
-    setIsLoggedIn(tokenUtils.isLoggedIn());
-  }, []);
-
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* JSON-LD structured data for WebSite */}
-      <Script id="ld-website" type="application/ld+json"
+      <script
+        id="ld-website"
+        type="application/ld+json"
         dangerouslySetInnerHTML={{
           __html: JSON.stringify({
             '@context': 'https://schema.org',
@@ -47,8 +41,9 @@ export default function Home() {
           })
         }}
       />
-      {/* Scroll reveal activator */}
+
       <ScrollReveal />
+
       {/* Banner (full-bleed) */}
       <div className="relative h-64 sm:h-80 lg:h-[420px] w-screen left-1/2 right-1/2 -ml-[50vw] -mr-[50vw]">
         <Image
@@ -64,32 +59,17 @@ export default function Home() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 p-5 sm:p-8">
             <div className="max-w-3xl text-white motion-safe:animate-[fade-up_700ms_ease-out_both]">
               <div className="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs">
-                <span className="inline-block h-1.5 w-1.5 rounded-full bg-yellow-400"></span>
+                <span className="inline-block h-1.5 w-1.5 rounded-full bg-yellow-400" />
                 AI 自動化分析
               </div>
-              <h1 className="mt-1 sm:mt-3 text-3xl sm:text-4xl font-semibold tracking-tight [animation-delay:60ms]">{BRAND_NAME}，{TAGLINE}</h1>
-              <p className="mt-2 hidden sm:block text-sm sm:text-base text-white/90 [animation-delay:120ms]">以健康為本，讓每一次訓練都更專注、更有感。</p>
-              <div className="mt-3 flex [animation-delay:180ms]">
-                {isLoggedIn ? (
-                  <>
-                    <Link
-                      href="/dashboard"
-                      className="inline-flex items-center justify-center rounded-lg bg-orange-500 px-4 py-2.5 text-sm sm:text-base text-white hover:bg-orange-600 transition-colors"
-                    >
-                      前往儀表板
-                    </Link>
-                  </>
-                ) : (
-                  <>
-                    <Link
-                      href="/register"
-                      className="inline-flex items-center justify-center rounded-lg bg-orange-500 px-4 py-2.5 text-sm sm:text-base text-white hover:bg-orange-600 transition-colors"
-                    >
-                      立即開始
-                    </Link>
-                  </>
-                )}
-              </div>
+              <h1 className="mt-1 sm:mt-3 text-3xl sm:text-4xl font-semibold tracking-tight [animation-delay:60ms]">
+                {BRAND_NAME}，{TAGLINE}
+              </h1>
+              <p className="mt-2 hidden sm:block text-sm sm:text-base text-white/90 [animation-delay:120ms]">
+                以健康為本，讓每一次訓練都更專注、更有感。
+              </p>
+              {/* Client island: CTA（登入/註冊） */}
+              <HomeCta />
             </div>
             {/* Scroll cue */}
             <a
@@ -116,9 +96,7 @@ export default function Home() {
               </div>
               <div>
                 <h3 className="text-base font-semibold text-gray-900">飲食日記</h3>
-                <p className="mt-1 text-sm text-gray-600">
-                  記錄每一餐與營養素，掌握每日熱量與攝取比例。
-                </p>
+                <p className="mt-1 text-sm text-gray-600">記錄每一餐與營養素，掌握每日熱量與攝取比例。</p>
                 <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-600">
                   <span className="inline-flex items-center gap-1 rounded-full bg-gray-50 px-2 py-1">相片上傳</span>
                   <span className="inline-flex items-center gap-1 rounded-full bg-gray-50 px-2 py-1">營養分析</span>
@@ -146,9 +124,7 @@ export default function Home() {
               </div>
               <div>
                 <h3 className="text-base font-semibold text-gray-900">運動追蹤</h3>
-                <p className="mt-1 text-sm text-gray-600">
-                  支援有氧與重訓，追蹤表現與進度，讓訓練更有方向。
-                </p>
+                <p className="mt-1 text-sm text-gray-600">支援有氧與重訓，追蹤表現與進度，讓訓練更有方向。</p>
                 <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-600">
                   <span className="inline-flex items-center gap-1 rounded-full bg-gray-50 px-2 py-1">多種運動</span>
                   <span className="inline-flex items-center gap-1 rounded-full bg-gray-50 px-2 py-1">有氧記錄</span>
@@ -175,9 +151,7 @@ export default function Home() {
               </div>
               <div>
                 <h3 className="text-base font-semibold text-gray-900">個人健康數據</h3>
-                <p className="mt-1 text-sm text-gray-600">
-                  以實用的指標呈現變化，專注長期追蹤而非短期波動。
-                </p>
+                <p className="mt-1 text-sm text-gray-600">以實用的指標呈現變化，專注長期追蹤而非短期波動。</p>
                 <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-600">
                   <span className="inline-flex items-center gap-1 rounded-full bg-gray-50 px-2 py-1">體重/體脂</span>
                   <span className="inline-flex items-center gap-1 rounded-full bg-gray-50 px-2 py-1">週期視圖</span>
@@ -292,6 +266,7 @@ export default function Home() {
             </div>
           </div>
         </div>
+
         {/* Pro features */}
         <div className="mt-16 sm:mt-24">
           <div className="max-w-3xl" data-reveal>
@@ -357,9 +332,9 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Site footer: visible on all viewports */}
+      {/* Site footer */}
       <Footer />
     </div>
   );
 }
-import { BRAND_NAME, TAGLINE, SITE_URL } from "@/config/brand";
+
