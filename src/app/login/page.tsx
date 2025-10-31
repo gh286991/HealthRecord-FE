@@ -90,20 +90,20 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-          登入您的帳戶
-        </h2>
-        <p className="mt-2 text-center text-sm text-gray-600">
-          或{' '}
-          <Link href="/register" className="font-medium text-blue-600 hover:text-blue-500">
-            建立新帳戶
-          </Link>
-        </p>
-      </div>
+    <div className="min-h-full bg-gray-50 flex items-center justify-center py-12 sm:px-6 lg:px-8">
+      <div className="w-full sm:max-w-md space-y-6">
+        <div>
+          <h2 className="mt-2 text-center text-3xl font-extrabold text-gray-900">
+            登入您的帳戶
+          </h2>
+          <p className="mt-2 text-center text-sm text-gray-600">
+            或{' '}
+            <Link href="/register/email" className="font-medium text-blue-600 hover:text-blue-500">
+              建立新帳戶
+            </Link>
+          </p>
+        </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
         <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
           <form className="space-y-6" onSubmit={handleSubmit}>
 
@@ -172,29 +172,9 @@ export default function LoginPage() {
               </a>
             </div>
           </div>
-
-          <div className="mt-6">
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-gray-300" />
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500">測試帳戶</span>
-              </div>
-            </div>
-
-            <div className="mt-4 text-sm text-gray-600 bg-gray-50 p-4 rounded">
-              <p className="font-medium">您可以使用以下測試資料：</p>
-              <p>用戶名：john_doe</p>
-              <p>密碼：password123</p>
-              <p className="text-xs mt-2 text-gray-500">
-                （如果您還沒有帳戶，請先註冊）
-              </p>
-            </div>
-          </div>
         </div>
+        <Toast open={toastOpen} message={toastMsg} variant={toastVariant} onClose={() => setToastOpen(false)} />
       </div>
-      <Toast open={toastOpen} message={toastMsg} variant={toastVariant} onClose={() => setToastOpen(false)} />
     </div>
   );
-} 
+}

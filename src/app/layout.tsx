@@ -9,7 +9,7 @@ import { NextIntlClientProvider } from 'next-intl';
 import PreventBounce from "@/components/PreventBounce";
 import MobileTabBar from "@/components/MobileTabBar";
 import CookieBanner from "@/components/CookieBanner";
-import AppFooter from "@/components/AppFooter";
+import ConditionalFooter from "@/components/ConditionalFooter";
 import { BRAND_NAME, TAGLINE, SITE_URL } from "@/config/brand";
 
 const geistSans = Geist({
@@ -122,10 +122,10 @@ export default async function RootLayout({
         <NextIntlClientProvider locale="zh" messages={messages}>
           <Providers>
             <Navigation />
-            <main className="flex-1">
+            <main className="flex-1 bg-gray-50">
               <AuthWrapper>{children}</AuthWrapper>
             </main>
-            <AppFooter />
+            <ConditionalFooter />
             <MobileTabBar />
             <PWAInstallPrompt />
             <PreventBounce />

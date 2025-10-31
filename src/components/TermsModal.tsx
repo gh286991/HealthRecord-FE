@@ -3,6 +3,8 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { X, ChevronRight } from 'lucide-react';
+import MarkdownArticle from '@/components/legal/MarkdownArticle';
+import { API_BASE_URL } from '@/lib/api';
 
 interface TermsModalProps {
   open: boolean;
@@ -15,6 +17,32 @@ export default function TermsModal({ open, onClose, onAccept }: TermsModalProps)
   const [currentStep, setCurrentStep] = useState<'terms' | 'privacy'>('terms');
   const [termsRead, setTermsRead] = useState(false);
   const [privacyRead, setPrivacyRead] = useState(false);
+  // 後端最新版本內容
+  const [loading, setLoading] = useState(false);
+  const [termsMd, setTermsMd] = useState<string | null>(null);
+  const [termsHtml, setTermsHtml] = useState<string | null>(null);
+  const [termsVersion, setTermsVersion] = useState<string | null>(null);
+  const [termsEffective, setTermsEffective] = useState<string | null>(null);
+  const [termsHeading, setTermsHeading] = useState<string | null>(null);
+  const [privacyMd, setPrivacyMd] = useState<string | null>(null);
+  const [privacyHtml, setPrivacyHtml] = useState<string | null>(null);
+  const [privacyVersion, setPrivacyVersion] = useState<string | null>(null);
+  const [privacyEffective, setPrivacyEffective] = useState<string | null>(null);
+  const [privacyHeading, setPrivacyHeading] = useState<string | null>(null);
+
+  // 去除內容中的第一個 H1，避免與上方標題重複
+  const stripTopHeadingMd = (md?: string | null) => {
+    if (!md) return md ?? undefined;
+    // 移除 Markdown 型式的第一個 H1（ATX 風格）
+    let out = md.replace(/^#\s+.*\n+/m, '');
+    // 移除 Setext 風格的 H1（第一行 + ====
+    out = out.replace(/^([^\n]+)\n=+\n+/, '');
+    return out;
+  };
+  const stripTopHeadingHtml = (html?: string | null) => {
+    if (!html) return html ?? undefined;
+    return html.replace(/<h1[^>]*>[\s\S]*?<\/h1>/i, '');
+  };
   
   const scrollRef = useRef<HTMLDivElement>(null);
   const [isScrolledToBottom, setIsScrolledToBottom] = useState(false);
@@ -57,6 +85,54 @@ export default function TermsModal({ open, onClose, onAccept }: TermsModalProps)
       setTermsRead(false);
       setPrivacyRead(false);
       setIsScrolledToBottom(false);
+      // 載入後端最新的條款/隱私內容
+      (async () => {
+        try {
+          setLoading(true);
+          const metaResp = await fetch(`${API_BASE_URL}/legal/latest-versions`, { cache: 'no-store' });
+          if (metaResp.ok) {
+            const meta = await metaResp.json();
+            if (meta?.terms) {
+              setTermsVersion(meta.terms);
+              setTermsEffective(meta?.termsEffectiveDate || null);
+              try {
+                const d = await fetch(`${API_BASE_URL}/legal/doc/terms/${meta.terms}`, { cache: 'no-store' }).then(r => r.ok ? r.json() : null);
+                const md = d?.contentMd ?? null;
+                setTermsMd(md);
+                setTermsHtml(d?.contentHtml ?? null);
+                if (md) {
+                  const m = md.match(/^#\s+(.+)$/m);
+                  if (m) {
+                    const raw = m[1].trim();
+                    const text = raw.replace(/[*_`]/g, '').replace(/<[^>]+>/g, '');
+                    setTermsHeading(text);
+                  }
+                }
+              } catch {}
+            }
+            if (meta?.privacy) {
+              setPrivacyVersion(meta.privacy);
+              setPrivacyEffective(meta?.privacyEffectiveDate || null);
+              try {
+                const d = await fetch(`${API_BASE_URL}/legal/doc/privacy/${meta.privacy}`, { cache: 'no-store' }).then(r => r.ok ? r.json() : null);
+                const md = d?.contentMd ?? null;
+                setPrivacyMd(md);
+                setPrivacyHtml(d?.contentHtml ?? null);
+                if (md) {
+                  const m = md.match(/^#\s+(.+)$/m);
+                  if (m) {
+                    const raw = m[1].trim();
+                    const text = raw.replace(/[*_`]/g, '').replace(/<[^>]+>/g, '');
+                    setPrivacyHeading(text);
+                  }
+                }
+              } catch {}
+            }
+          }
+        } finally {
+          setLoading(false);
+        }
+      })();
     }
   }, [open]);
 
@@ -125,111 +201,44 @@ export default function TermsModal({ open, onClose, onAccept }: TermsModalProps)
           >
             {currentStep === 'terms' ? (
             <div className="prose prose-sm max-w-none text-gray-700">
-              <h2 className="text-2xl font-semibold text-gray-900 mb-4">服務條款</h2>
-              <p className="text-sm text-gray-600 mb-6">最後更新日期：2024年12月</p>
-              
-              <section className="mb-6">
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">1. 接受條款</h3>
-                <p className="mb-4">
-                  歡迎使用 {BRAND_NAME}（以下簡稱「本服務」）。本服務是由個人開發者提供的健康記錄管理系統。
-                  當您註冊帳號、使用本服務或進行付費訂閱時，即表示您已閱讀、理解並同意接受本服務條款的所有內容。
-                </p>
-              </section>
-
-              <section className="mb-6">
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">2. 服務說明</h3>
-                <p className="mb-4">
-                  {BRAND_NAME} 提供個人健康記錄管理功能，包括飲食、健身、身體指標記錄與分析。
-                  本服務目前主要服務台灣地區用戶。
-                </p>
-              </section>
-
-              <section className="mb-6">
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">3. 付費服務與訂閱</h3>
-                <p className="mb-2">本服務提供以下訂閱方案：</p>
-                <ul className="list-disc pl-6 space-y-1 mb-4">
-                  <li><strong>免費方案：</strong>提供基本功能</li>
-                  <li><strong>月費/年費方案：</strong>提供完整功能，自動續約</li>
-                </ul>
-                <p className="mb-2">
-                  <strong>自動續約：</strong>訂閱將自動續約，除非您在計費日期前至少 24 小時取消。
-                </p>
-                <p className="mb-4">
-                  <strong>退款政策：</strong>根據台灣消費者保護法，您享有七天鑑賞期，可申請全額退款。
-                </p>
-              </section>
-
-              <section className="mb-6">
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">4. 免責聲明</h3>
-                <p className="font-semibold text-red-600 mb-4">
-                  <strong>重要：本服務僅提供健康記錄管理工具，不提供醫療診斷、治療建議或醫療諮詢。</strong>
-                  在做出任何健康相關決定前，請務必諮詢合格的醫療專業人員。
-                </p>
-              </section>
-
-              <section className="mb-6">
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">5. 其他條款</h3>
-                <p className="mb-4">
-                  本條款與隱私權政策構成您與我們之間關於使用本服務的完整協議。
-                  如本條款的任何條款被認定為無效或不可執行，其餘條款仍應有效。
-                </p>
-                <p className="mb-4">
-                  如因本條款產生爭議，雙方同意以台灣台北地方法院為第一審管轄法院。
-                </p>
-              </section>
-
+              <div className="flex items-end gap-3 flex-wrap mb-1">
+                <h2 className="text-2xl font-semibold text-gray-900">{termsHeading || '使用者條款（Terms of Service）'}</h2>
+                {termsVersion && (
+                  <span className="text-xs text-gray-600 pb-0.5">版本：{termsVersion}</span>
+                )}
+              </div>
+              <p className="text-sm text-gray-600 mb-4">最後更新日期：{termsEffective ? new Date(termsEffective).toLocaleDateString('zh-TW', { year: 'numeric', month: 'long', day: 'numeric' }) : '—'}</p>
+              {loading && !termsMd && !termsHtml ? (
+                <p className="text-sm text-gray-500">正在載入最新條款內容…</p>
+              ) : (
+                <MarkdownArticle
+                  content={stripTopHeadingMd(termsMd)}
+                  html={termsMd ? undefined : stripTopHeadingHtml(termsHtml)}
+                  suppressTopHeading
+                />
+              )}
               <div className="text-center py-4 text-sm text-gray-500 border-t border-gray-100 mt-4 pt-4">
                 如需查看完整條款，請訪問 <Link href="/terms/latest" className="text-orange-600 hover:text-orange-700">服務條款頁面</Link>
               </div>
             </div>
             ) : (
               <div className="prose prose-sm max-w-none text-gray-700">
-                <h2 className="text-2xl font-semibold text-gray-900 mb-4">隱私權政策</h2>
-                <p className="text-sm text-gray-600 mb-6">最後更新日期：2024年12月</p>
-              
-              <section className="mb-6">
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">1. 資料收集類型</h3>
-                <p className="mb-2">我們會收集以下類型的資料：</p>
-                <ul className="list-disc pl-6 space-y-1 mb-4">
-                  <li>註冊資訊（用戶名、電子郵件、密碼）</li>
-                  <li>健康數據（飲食記錄、健身記錄、身體指標）</li>
-                  <li>使用資料（透過 Cookie 和本地儲存）</li>
-                </ul>
-                <p className="text-red-600 font-semibold">
-                  <strong>特別說明：</strong>健康數據屬於敏感資料，我們會採取特別嚴格的保護措施。
-                </p>
-              </section>
-
-              <section className="mb-6">
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">2. 資料使用目的</h3>
-                <p className="mb-2">我們使用您的資料用於：</p>
-                <ul className="list-disc pl-6 space-y-1 mb-4">
-                  <li>提供和改善本服務的功能</li>
-                  <li>個人化您的使用體驗</li>
-                  <li>保障服務安全，防止詐欺和濫用</li>
-                </ul>
-                <p className="font-semibold">我們不會將您的個人資料出售給第三方。</p>
-              </section>
-
-              <section className="mb-6">
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">3. 資料安全</h3>
-                <p className="mb-4">
-                  我們使用 HTTPS 加密傳輸所有資料，密碼經加密處理，並實施資料庫存取控制和安全防護措施。
-                </p>
-              </section>
-
-              <section className="mb-6">
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">4. 您的權利</h3>
-                <p className="mb-2">根據台灣個人資料保護法，您享有以下權利：</p>
-                <ul className="list-disc pl-6 space-y-1 mb-4">
-                  <li>查詢權：要求提供個人資料副本</li>
-                  <li>更正權：更正不完整的資料</li>
-                  <li>刪除權：要求刪除資料</li>
-                  <li>撤回同意權：隨時撤回對資料處理的同意</li>
-                </ul>
-                <p>如需行使上述權利，請透過 {SUPPORT_EMAIL} 聯絡我們。</p>
-              </section>
-
+                <div className="flex items-end gap-3 flex-wrap mb-1">
+                  <h2 className="text-2xl font-semibold text-gray-900">{privacyHeading || '隱私權政策（Privacy Policy）'}</h2>
+                  {privacyVersion && (
+                    <span className="text-xs text-gray-600 pb-0.5">版本：{privacyVersion}</span>
+                  )}
+                </div>
+                <p className="text-sm text-gray-600 mb-4">最後更新日期：{privacyEffective ? new Date(privacyEffective).toLocaleDateString('zh-TW', { year: 'numeric', month: 'long', day: 'numeric' }) : '—'}</p>
+                {loading && !privacyMd && !privacyHtml ? (
+                  <p className="text-sm text-gray-500">正在載入最新隱私內容…</p>
+                ) : (
+                  <MarkdownArticle
+                    content={stripTopHeadingMd(privacyMd)}
+                    html={privacyMd ? undefined : stripTopHeadingHtml(privacyHtml)}
+                    suppressTopHeading
+                  />
+                )}
                 <div className="text-center py-4 text-sm text-gray-500 border-t border-gray-100 mt-4 pt-4">
                   如需查看完整政策，請訪問 <Link href="/privacy/latest" className="text-orange-600 hover:text-orange-700">隱私權政策頁面</Link>
                 </div>
@@ -294,4 +303,4 @@ export default function TermsModal({ open, onClose, onAccept }: TermsModalProps)
     </div>
   );
 }
-import { BRAND_NAME, SUPPORT_EMAIL } from "@/config/brand";
+ 
